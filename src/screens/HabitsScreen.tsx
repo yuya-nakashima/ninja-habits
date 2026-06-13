@@ -292,7 +292,8 @@ export default function HabitsScreen({ goto, state, setState, repo }: ScreenProp
   // 二重送信ガードは ref を真とする（同一 tick の連続発火で state closure が古い値を見るのを防ぐ）
   const pendingRef = React.useRef<Set<string>>(new Set());
   const mountedRef = React.useRef(true);
-  React.useEffect(() => () => { mountedRef.current = false; }, []);
+  // StrictMode の mount→unmount→remount で false のまま固定されないよう、本体で true に戻す
+  React.useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   function safeSetError(message: string | null) {
     if (mountedRef.current) setError(message);

@@ -5,7 +5,7 @@
 import { advanceDailyState, markTodayHit, upsertReflection } from './domain';
 import type {
   AppState, DailyLogResult, GoalMaster, HabitGroupMaster, HabitItemMaster,
-  NotificationResult, ReflectionPayload,
+  NotificationResult, ReflectionPayload, WishCategoryMaster, WishItemMaster,
 } from './types';
 
 const DEFAULT_NOTIF = {
@@ -146,6 +146,48 @@ export function applyNotifSaved(s: AppState, groupId: string, itemId: string, no
       items: g.items.map(it => it.id !== itemId ? it
         : { ...it, notif: { on: notif.on, times: notif.times, days: notif.days, version: notif.version } }),
     }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Wish List results — /v1/wish-* 系 API のレスポンス反映
+// ---------------------------------------------------------------------------
+
+export function applyWishCategoryCreated(s: AppState, master: WishCategoryMaster): AppState {
+  return { ...s, wishes: [...s.wishes, { id: master.id, name: master.name, version: master.version, items: [] }] };
+}
+
+export function applyWishCategoryUpdated(s: AppState, master: WishCategoryMaster): AppState {
+  return {
+    ...s,
+    wishes: s.wishes.map(c => c.id !== master.id ? c : { ...c, name: master.name, version: master.version }),
+  };
+}
+
+export function applyWishCategoryDeleted(s: AppState, categoryId: string): AppState {
+  return { ...s, wishes: s.wishes.filter(c => c.id !== categoryId) };
+}
+
+export function applyWishItemCreated(s: AppState, master: WishItemMaster): AppState {
+  return {
+    ...s,
+    wishes: s.wishes.map(c => c.id !== master.category_id ? c
+      : { ...c, items: [...c.items, { id: master.id, content: master.content, version: master.version }] }),
+  };
+}
+
+export function applyWishItemUpdated(s: AppState, categoryId: string, master: WishItemMaster): AppState {
+  return {
+    ...s,
+    wishes: s.wishes.map(c => c.id !== categoryId ? c
+      : { ...c, items: c.items.map(it => it.id !== master.id ? it : { ...it, content: master.content, version: master.version }) }),
+  };
+}
+
+export function applyWishItemDeleted(s: AppState, categoryId: string, itemId: string): AppState {
+  return {
+    ...s,
+    wishes: s.wishes.map(c => c.id !== categoryId ? c : { ...c, items: c.items.filter(it => it.id !== itemId) }),
   };
 }
 

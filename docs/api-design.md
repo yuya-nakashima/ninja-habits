@@ -424,6 +424,13 @@ DELETE /v1/wish-items/{itemId}
 }
 ```
 
+ルール:
+
+- カテゴリ作成・項目作成は `201`。`sort_order` はサーバーが末尾を割り当てる（項目はカテゴリ内の末尾）
+- `PATCH` は `version` 必須（欠落は `422`）。不一致は `409`
+- `DELETE` は**物理削除**。Wish List は日次ログ・streak と無関係で保持すべき履歴が無いため、goals/habits の論理削除と異なり物理削除とする。カテゴリ削除時は配下項目も FK CASCADE で消える。存在しない・所有していない場合は `404`
+- `/reorder` は送られた `items` を渡された順に `sort_order = 1..n` へ並べ直す
+
 ## エラー形式
 
 ```json
