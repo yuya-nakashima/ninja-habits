@@ -401,7 +401,8 @@ export async function reorderItems(authUser: AuthUser, groupId: string, input: R
     [user.id, groupId, input.items.map(item => item.id)],
   );
   if (owned.rows.length !== input.items.length) return { kind: 'not_found' };
-  return applyReorder('habit_items', user.id, input);
+  // group_id も UPDATE 条件に含め、reorder 中にグループが変わった行を弾く
+  return applyReorder('habit_items', user.id, input, { column: 'group_id', value: groupId });
 }
 
 // ---------------------------------------------------------------------------
@@ -450,18 +451,26 @@ export async function putNotification(authUser: AuthUser, itemId: string, input:
 
 class ReorderConflict extends Error {}
 
-async function applyReorder(table: 'habit_groups' | 'habit_items', userId: string, input: ReorderInput): Promise<ReorderResult> {
+async function applyReorder(
+  table: 'habit_groups' | 'habit_items',
+  userId: string,
+  input: ReorderInput,
+  scope?: { column: string; value: string },
+): Promise<ReorderResult> {
+  const scopeClause = scope ? ` AND ${scope.column} = $5` : '';
   try {
     const items = await withTransaction(async client => {
       const results: { id: string; sort_order: number; version: number }[] = [];
       for (const [index, item] of input.items.entries()) {
+        const params: unknown[] = [item.id, userId, item.version, index + 1];
+        if (scope) params.push(scope.value);
         const updated: pg.QueryResult<{ id: string; sort_order: number; version: number }> = await client.query(
           `
             UPDATE ${table} SET sort_order = $4, version = version + 1
-            WHERE id = $1 AND user_id = $2 AND version = $3
+            WHERE id = $1 AND user_id = $2 AND version = $3${scopeClause}
             RETURNING id, sort_order, version
           `,
-          [item.id, userId, item.version, index + 1],
+          params,
         );
         if (!updated.rows[0]) throw new ReorderConflict();
         results.push(updated.rows[0]);

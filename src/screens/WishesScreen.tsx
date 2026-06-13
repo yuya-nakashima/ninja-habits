@@ -121,7 +121,7 @@ export default function WishesScreen({ goto, state, setState, repo }: ScreenProp
   function commitItem(catId: string, itemId: string) {
     const item = state.wishes.find(c => c.id === catId)?.items.find(it => it.id === itemId);
     const snap = snapshot.current;
-    if (!item || snap?.kind !== 'item' || snap.id !== itemId) return;
+    if (!item || snap?.kind !== 'item' || snap.id !== itemId || snap.categoryId !== catId) return;
     if (item.content === snap.value) return;
     if (!item.content.trim()) {
       setItemContent(catId, itemId, snap.value);
