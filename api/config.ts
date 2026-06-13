@@ -4,6 +4,7 @@ export interface ApiConfig {
   devAuth: boolean;
   port: number;
   cognitoIssuer: string | null;
+  cognitoClientId: string | null;
 }
 
 export function readConfig(): ApiConfig {
@@ -13,6 +14,7 @@ export function readConfig(): ApiConfig {
     devAuth: process.env.API_DEV_AUTH === 'true',
     port: Number(process.env.PORT ?? '8080'),
     cognitoIssuer: readCognitoIssuer(),
+    cognitoClientId: process.env.COGNITO_CLIENT_ID ?? null,
   };
 }
 

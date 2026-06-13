@@ -48,7 +48,10 @@ export async function authenticate(req: IncomingMessage, config: ApiConfig): Pro
   const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
   if (!token || !config.cognitoIssuer) return null;
 
-  const claims = await verifyCognitoJwt(token, config.cognitoIssuer);
+  const claims = await verifyCognitoJwt(token, {
+    issuer: config.cognitoIssuer,
+    clientId: config.cognitoClientId,
+  });
   if (!claims?.sub) return null;
 
   return {
@@ -57,17 +60,40 @@ export async function authenticate(req: IncomingMessage, config: ApiConfig): Pro
   };
 }
 
-async function verifyCognitoJwt(token: string, issuer: string): Promise<JwtClaims | null> {
+export interface JwtExpectations {
+  issuer: string;
+  clientId: string | null;
+  now?: number;
+}
+
+/**
+ * 署名以外のクレーム検証（純関数・テスト可能）。
+ * - iss 一致 / exp 未来 / token_use は id|access
+ * - clientId 指定時: id トークンは aud、access トークンは client_id を照合
+ */
+export function validateClaims(header: JwtHeader, claims: JwtClaims, expect: JwtExpectations): boolean {
+  const now = expect.now ?? Date.now();
+  if (header.alg !== 'RS256' || !header.kid) return false;
+  if (claims.iss !== expect.issuer) return false;
+  if (typeof claims.exp !== 'number' || claims.exp * 1000 <= now) return false;
+  if (claims.token_use !== 'access' && claims.token_use !== 'id') return false;
+  if (expect.clientId) {
+    const audience = claims.token_use === 'id' ? claims.aud : claims.client_id;
+    if (audience !== expect.clientId) return false;
+  }
+  return true;
+}
+
+async function verifyCognitoJwt(token: string, expect: JwtExpectations): Promise<JwtClaims | null> {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
 
   const header = parseBase64UrlJson<JwtHeader>(parts[0]);
   const claims = parseBase64UrlJson<JwtClaims>(parts[1]);
-  if (!header || !claims || header.alg !== 'RS256' || !header.kid) return null;
-  if (claims.iss !== issuer || typeof claims.exp !== 'number' || claims.exp * 1000 <= Date.now()) return null;
-  if (claims.token_use !== 'access' && claims.token_use !== 'id') return null;
+  if (!header || !claims) return null;
+  if (!validateClaims(header, claims, expect)) return null;
 
-  const jwk = await findJwk(issuer, header.kid);
+  const jwk = await findJwk(expect.issuer, header.kid!);
   if (!jwk) return null;
 
   const signatureInput = Buffer.from(`${parts[0]}.${parts[1]}`);
