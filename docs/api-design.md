@@ -35,6 +35,12 @@ v1 の Web 版では Cognito User Pool を使う。
 メール/パスワード、Google、Apple を同じタイミングで有効化し、API は Cognito JWT を検証して認証済みユーザーを特定する。
 DB は `users.cognito_sub` をユーザー特定の基準にし、自前の `password_hash` は持たない。
 
+トークンの扱い（T-029 で確定）:
+
+- フロントは Hosted UI (Authorization Code + PKCE) でログインし、API へは **ID トークン**を `Authorization: Bearer` で送る。アクセストークンには `email` クレームが無く、サーバーがユーザーの email を特定できないため。
+- API は JWT を検証する: 署名（User Pool の JWKS）、`iss` 一致、`exp` 未来、`token_use === 'id'`、`aud === COGNITO_CLIENT_ID`（設定時）。アクセストークンや別クライアント発行トークンは受理しない。
+- ローカル開発では `API_DEV_AUTH=true` のとき dev ヘッダ（`x-dev-cognito-sub` / `x-dev-email`）認証に切り替わる。本番では無効にする。
+
 ```http
 GET /v1/me
 ```

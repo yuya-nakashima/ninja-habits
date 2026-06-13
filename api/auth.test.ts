@@ -17,8 +17,8 @@ describe('validateClaims', () => {
     expect(validateClaims(header, idClaims, expect_)).toBe(true);
   });
 
-  it('accepts a valid access token (client_id matches clientId)', () => {
-    expect(validateClaims(header, accessClaims, expect_)).toBe(true);
+  it('rejects an access token (only id tokens are accepted; access tokens lack email)', () => {
+    expect(validateClaims(header, accessClaims, expect_)).toBe(false);
   });
 
   it('rejects a non-RS256 alg or missing kid', () => {
@@ -42,12 +42,8 @@ describe('validateClaims', () => {
     expect(validateClaims(header, { ...idClaims, aud: 'other-client' }, expect_)).toBe(false);
   });
 
-  it('rejects an access token whose client_id is a different client', () => {
-    expect(validateClaims(header, { ...accessClaims, client_id: 'other-client' }, expect_)).toBe(false);
-  });
-
-  it('rejects an id token that carries client_id but no aud when clientId is enforced', () => {
-    expect(validateClaims(header, { ...idClaims, aud: undefined, client_id: CLIENT_ID }, expect_)).toBe(false);
+  it('rejects an id token with no aud when clientId is enforced', () => {
+    expect(validateClaims(header, { ...idClaims, aud: undefined }, expect_)).toBe(false);
   });
 
   it('skips audience check when clientId is not configured', () => {

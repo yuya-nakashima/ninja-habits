@@ -68,19 +68,20 @@ export interface JwtExpectations {
 
 /**
  * 署名以外のクレーム検証（純関数・テスト可能）。
- * - iss 一致 / exp 未来 / token_use は id|access
- * - clientId 指定時: id トークンは aud、access トークンは client_id を照合
+ * - iss 一致 / exp 未来 / token_use は id のみ
+ * - clientId 指定時は aud を照合
+ *
+ * ID トークンに限定する理由: このAPIはユーザーの email を必要とするが、
+ * Cognito のアクセストークンには email クレームが無い。アクセストークンを
+ * 受理すると ensureUser の upsert で email を unknown 値へ上書きしてしまう。
  */
 export function validateClaims(header: JwtHeader, claims: JwtClaims, expect: JwtExpectations): boolean {
   const now = expect.now ?? Date.now();
   if (header.alg !== 'RS256' || !header.kid) return false;
   if (claims.iss !== expect.issuer) return false;
   if (typeof claims.exp !== 'number' || claims.exp * 1000 <= now) return false;
-  if (claims.token_use !== 'access' && claims.token_use !== 'id') return false;
-  if (expect.clientId) {
-    const audience = claims.token_use === 'id' ? claims.aud : claims.client_id;
-    if (audience !== expect.clientId) return false;
-  }
+  if (claims.token_use !== 'id') return false;
+  if (expect.clientId && claims.aud !== expect.clientId) return false;
   return true;
 }
 
