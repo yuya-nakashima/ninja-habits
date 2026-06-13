@@ -103,6 +103,32 @@ export async function fetchTodayState(config: ApiConfig, session: AuthSession, d
   return mapTodayResponse(await response.json() as ApiTodayResponse);
 }
 
+interface ApiReflectionsResponse {
+  reflections: ApiHistoryEntry[];
+}
+
+export async function fetchReflections(
+  config: ApiConfig,
+  session: AuthSession,
+  range?: { from?: string; to?: string },
+): Promise<HistoryEntry[]> {
+  const params = new URLSearchParams();
+  if (range?.from) params.set('from', range.from);
+  if (range?.to) params.set('to', range.to);
+  const query = params.size > 0 ? `?${params.toString()}` : '';
+
+  const response = await fetch(`${config.baseUrl}/v1/reflections${query}`, {
+    headers: buildAuthHeaders(session),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load reflections: ${response.status}`);
+  }
+
+  const body = await response.json() as ApiReflectionsResponse;
+  return body.reflections.map(mapHistoryEntry);
+}
+
 /** 楽観ロック失敗（409）。最新データを再取得してから再試行する。 */
 export class ApiConflictError extends Error {
   constructor() {

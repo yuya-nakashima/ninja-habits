@@ -1,4 +1,5 @@
 // HistoryScreen — past reflections. Click a card to expand.
+// 全履歴は GET /v1/reflections（既定で直近30日）から取得する。
 
 import React from 'react';
 import type { HistoryEntry, ScreenProps } from '../types';
@@ -23,8 +24,22 @@ function firstText(r: HistoryEntry): string {
   return '（入力なし）';
 }
 
-export default function HistoryScreen({ goto, state }: ScreenProps) {
-  const [openId, setOpenId] = React.useState<number | null>(null);
+export default function HistoryScreen({ goto, state, repo }: ScreenProps) {
+  const [entries, setEntries] = React.useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [openDay, setOpenDay] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    repo.listReflections()
+      .then(rows => { if (!cancelled) setEntries(rows); })
+      .catch(() => { if (!cancelled) setError('記録の取得に失敗しました。'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [repo]);
 
   return (
     <>
@@ -34,14 +49,18 @@ export default function HistoryScreen({ goto, state }: ScreenProps) {
         <StreakBar days={state.streak} />
       </div>
 
-      {state.history.length === 0 ? (
+      {error && <div className="nh-feedback nh-feedback--danger" style={{ marginBottom: 12 }}>{error}</div>}
+
+      {loading ? (
+        <div className="nh-muted" style={{ textAlign: 'center', padding: '24px 0' }}>読み込んでいます…</div>
+      ) : entries.length === 0 ? (
         <EmptyState icon={<I.history width={22} height={22} />}
           title="まだ記録がありません"
           body="今夜の振り返りから、ここに静かに積み上がっていきます。" />
-      ) : state.history.map((r, i) => {
-        const open = openId === i;
+      ) : entries.map(r => {
+        const open = openDay === r.day;
         return (
-          <div key={i} className="kit-history-card" onClick={() => setOpenId(open ? null : i)}>
+          <div key={r.day} className="kit-history-card" onClick={() => setOpenDay(open ? null : r.day)}>
             <div className="kit-history-date">{r.day}</div>
             {!open
               ? <div className="kit-history-preview">{firstText(r)}</div>

@@ -350,8 +350,10 @@ PUT /v1/reflections/{date}
 
 取得ルール:
 
-- `from` / `to` の最大範囲は90日。超える場合は `422`
-- `from` / `to` 省略時は直近30日
+- `from` / `to` の最大範囲は90日（両端含む）。超える場合は `422`
+- 省略時の既定: `to` 省略は今日(JST)、`from` 省略は `to` の29日前（＝直近30日）
+- `from` > `to` や日付形式不正は `422`
+- レスポンスは `reflection_date` 降順。形式: `{ "reflections": [ { date, free_text, want_to_do, unconscious_desire, version } ] }`
 
 保存:
 

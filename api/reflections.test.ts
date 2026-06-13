@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseReflectionRequest } from './reflections.js';
+import { parseReflectionRequest, parseReflectionsQuery } from './reflections.js';
 
 const TODAY = '2026-06-11';
 
@@ -90,5 +90,47 @@ describe('parseReflectionRequest', () => {
   it('collects date and field errors together', () => {
     const result = parseReflectionRequest('bad', { free_text: 1 }, TODAY);
     expect(result).toMatchObject({ ok: false, fields: { date: expect.any(String), free_text: expect.any(String) } });
+  });
+});
+
+describe('parseReflectionsQuery', () => {
+  it('defaults to the last 30 days when both omitted', () => {
+    const result = parseReflectionsQuery(null, null, TODAY);
+    expect(result).toEqual({ ok: true, query: { from: '2026-05-13', to: TODAY } });
+  });
+
+  it('defaults from to 29 days before an explicit to', () => {
+    const result = parseReflectionsQuery(null, '2026-06-01', TODAY);
+    expect(result).toEqual({ ok: true, query: { from: '2026-05-03', to: '2026-06-01' } });
+  });
+
+  it('defaults to to today when only from is given', () => {
+    const result = parseReflectionsQuery('2026-06-01', null, TODAY);
+    expect(result).toEqual({ ok: true, query: { from: '2026-06-01', to: TODAY } });
+  });
+
+  it('accepts an explicit range', () => {
+    const result = parseReflectionsQuery('2026-05-01', '2026-06-06', TODAY);
+    expect(result).toEqual({ ok: true, query: { from: '2026-05-01', to: '2026-06-06' } });
+  });
+
+  it('accepts exactly a 90-day span', () => {
+    // 2026-03-09 .. 2026-06-06 inclusive = 90 days
+    expect(parseReflectionsQuery('2026-03-09', '2026-06-06', TODAY).ok).toBe(true);
+  });
+
+  it('rejects a span over 90 days', () => {
+    const result = parseReflectionsQuery('2026-03-08', '2026-06-06', TODAY);
+    expect(result).toMatchObject({ ok: false, fields: { range: expect.stringContaining('90') } });
+  });
+
+  it('rejects from after to', () => {
+    const result = parseReflectionsQuery('2026-06-07', '2026-06-06', TODAY);
+    expect(result).toMatchObject({ ok: false, fields: { range: expect.any(String) } });
+  });
+
+  it('rejects malformed from / to', () => {
+    expect(parseReflectionsQuery('nope', null, TODAY)).toMatchObject({ ok: false, fields: { from: expect.any(String) } });
+    expect(parseReflectionsQuery(null, '2026-13-40', TODAY)).toMatchObject({ ok: false, fields: { to: expect.any(String) } });
   });
 });

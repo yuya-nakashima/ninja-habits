@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiConflictError, createGoal, createHabitGroup, createWishCategory, deleteGoal, deleteWishItem,
-  mapTodayResponse, saveGoalLog, saveHabitItemLog, saveNotification, saveReflection,
+  fetchReflections, mapTodayResponse, saveGoalLog, saveHabitItemLog, saveNotification, saveReflection,
   updateGoal, updateHabitItem, updateWishItem,
 } from './apiClient';
 import type { ApiTodayResponse } from './apiClient';
@@ -141,6 +141,34 @@ describe('saveReflection', () => {
     stubFetch(422, { error: { code: 'validation_error', message: 'bad' } });
 
     await expect(saveReflection(config, session, '2026-06-11', payload)).rejects.toThrow('422');
+  });
+
+  it('fetches reflections and maps date -> day', async () => {
+    const fetchMock = stubFetch(200, {
+      reflections: [
+        { date: '2026-06-10', free_text: 'X', want_to_do: null, unconscious_desire: null, version: 1 },
+        { date: '2026-06-09', free_text: null, want_to_do: 'Y', unconscious_desire: null, version: 2 },
+      ],
+    });
+
+    const list = await fetchReflections(config, session, { from: '2026-06-01', to: '2026-06-10' });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.example/v1/reflections?from=2026-06-01&to=2026-06-10',
+      expect.objectContaining({ headers: expect.anything() }),
+    );
+    expect(list).toEqual([
+      { day: '2026-06-10', free_text: 'X', want_to_do: null, unconscious_desire: null, version: 1 },
+      { day: '2026-06-09', free_text: null, want_to_do: 'Y', unconscious_desire: null, version: 2 },
+    ]);
+  });
+
+  it('omits query params when no range is given', async () => {
+    const fetchMock = stubFetch(200, { reflections: [] });
+
+    await fetchReflections(config, session);
+
+    expect(fetchMock).toHaveBeenCalledWith('http://api.example/v1/reflections', expect.anything());
   });
 });
 

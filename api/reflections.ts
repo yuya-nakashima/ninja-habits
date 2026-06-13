@@ -3,11 +3,13 @@
 
 import { query } from './db.js';
 import { ensureUser } from './today.js';
-import { validateAppDate } from './dates.js';
+import { addDays, isIsoDate, validateAppDate } from './dates.js';
 import type { AuthUser } from './auth.js';
 
 const TEXT_FIELDS = ['free_text', 'want_to_do', 'unconscious_desire'] as const;
 const MAX_TEXT_LENGTH = 5000;
+const MAX_RANGE_DAYS = 90;
+const DEFAULT_RANGE_DAYS = 30;
 
 export interface ReflectionRecord {
   date: string;
@@ -66,6 +68,59 @@ export function parseReflectionRequest(date: string, body: unknown, today: strin
       version: version as number | undefined,
     },
   };
+}
+
+export interface ReflectionsQuery {
+  from: string;
+  to: string;
+}
+
+export type ReflectionsQueryResult =
+  | { ok: true; query: ReflectionsQuery }
+  | { ok: false; fields: Record<string, string> };
+
+/**
+ * GET /v1/reflections の from/to を検証する。
+ * - 省略時は直近30日（to=今日, from=今日-29）
+ * - 形式不正・to<from・範囲90日超は 422
+ */
+export function parseReflectionsQuery(from: string | null, to: string | null, today: string): ReflectionsQueryResult {
+  const fields: Record<string, string> = {};
+
+  if (from !== null && !isIsoDate(from)) fields.from = 'YYYY-MM-DD で指定してください';
+  if (to !== null && !isIsoDate(to)) fields.to = 'YYYY-MM-DD で指定してください';
+  if (Object.keys(fields).length > 0) return { ok: false, fields };
+
+  const resolvedTo = to ?? today;
+  const resolvedFrom = from ?? addDays(resolvedTo, -(DEFAULT_RANGE_DAYS - 1));
+
+  if (resolvedFrom > resolvedTo) {
+    fields.range = 'from は to 以前の日付で指定してください';
+    return { ok: false, fields };
+  }
+  const spanDays = Math.round(
+    (Date.parse(`${resolvedTo}T00:00:00Z`) - Date.parse(`${resolvedFrom}T00:00:00Z`)) / 86400000,
+  ) + 1;
+  if (spanDays > MAX_RANGE_DAYS) {
+    fields.range = `範囲は最大 ${MAX_RANGE_DAYS} 日です`;
+    return { ok: false, fields };
+  }
+
+  return { ok: true, query: { from: resolvedFrom, to: resolvedTo } };
+}
+
+export async function listReflections(authUser: AuthUser, range: ReflectionsQuery): Promise<ReflectionRecord[]> {
+  const user = await ensureUser(authUser);
+  const result = await query<ReflectionRecord>(
+    `
+      SELECT reflection_date::text AS date, free_text, want_to_do, unconscious_desire, version
+      FROM reflections
+      WHERE user_id = $1 AND reflection_date BETWEEN $2::date AND $3::date
+      ORDER BY reflection_date DESC
+    `,
+    [user.id, range.from, range.to],
+  );
+  return result.rows;
 }
 
 export type UpsertReflectionResult =
