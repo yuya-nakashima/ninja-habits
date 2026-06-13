@@ -1,0 +1,281 @@
+/* =========================================================================
+   App-level styles — phone frame, screen layout, kit-specific patterns
+   ========================================================================= */
+
+html, body { background: #0a0c12; }
+
+.kit-stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+  background: radial-gradient(ellipse at 50% -10%, #1A1D27 0%, #0a0c12 60%);
+}
+
+.kit-stage__scaler {
+  transform-origin: center center;
+  transform: scale(min(1.7, (100vh - 80px) / 840));
+  display: flex;
+}
+@media (max-width: 600px) {
+  .kit-stage__scaler { transform: none; }
+}
+
+.kit-phone {
+  width: 100%;
+  max-width: 390px;
+  height: min(840px, calc(100vh - 48px));
+  background: var(--bg);
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.kit-screen {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 16px 24px;
+  scroll-behavior: smooth;
+}
+.kit-screen::-webkit-scrollbar { width: 4px; }
+.kit-screen::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+
+/* ---- Today screen ---------------------------------------------------- */
+.home-section + .home-section { margin-top: 24px; }
+.home-section__header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+/* ---- Habit / goal rows ----------------------------------------------- */
+.kit-habit-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.kit-habit-row:last-child { border-bottom: none; }
+.kit-habit-body { flex: 1; min-width: 0; }
+.kit-habit-label { font-size: 14px; color: var(--fg); line-height: 1.4; }
+.kit-habit-label.struck { text-decoration: line-through; color: var(--fg-faint); }
+.kit-min-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.kit-min-text { font-size: 12px; color: var(--fg-muted); }
+
+/* ---- Goal management row --------------------------------------------- */
+.kit-mgmt-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.kit-mgmt-row + .kit-mgmt-row { margin-top: 10px; }
+.kit-mgmt-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.kit-mgmt-text { font-size: 14px; color: var(--fg); }
+.kit-mgmt-min-inp {
+  border: none; border-bottom: 1px solid var(--border);
+  outline: none; font: inherit; font-size: 12px; color: var(--fg-muted);
+  background: transparent; padding: 4px 0; width: 100%;
+}
+.kit-mgmt-min-inp:focus { border-bottom-color: var(--fg-muted); }
+.kit-mgmt-min-inp::placeholder { color: var(--fg-faint); }
+.kit-drag { color: var(--fg-faint); flex-shrink: 0; padding-top: 2px; cursor: grab; }
+
+/* ---- Habit-stack edit screen ----------------------------------------- */
+.kit-group-name-inp {
+  border: none; outline: none; flex: 1;
+  font: inherit; font-size: 16px; font-weight: 600;
+  background: transparent; color: var(--fg);
+}
+.kit-additem-row { display: flex; gap: 8px; margin-top: 10px; }
+.kit-additem-inp {
+  flex: 1; padding: 8px 12px;
+  font: inherit; font-size: 13px;
+  background: var(--surface-2); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+.kit-additem-inp:focus { border-color: var(--fg-muted); }
+.kit-additem-inp::placeholder { color: var(--fg-faint); }
+
+/* ---- WOOP editing ---------------------------------------------------- */
+.kit-woop-toggle {
+  background: none; border: none; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--fg-muted); letter-spacing: .04em;
+  padding: 0; margin-bottom: 8px;
+  transition: color var(--motion-fast) var(--ease);
+}
+.kit-woop-toggle:hover { color: var(--fg); }
+.kit-woop-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.kit-woop-inp {
+  flex: 1; border: none; border-bottom: 1px solid var(--border);
+  outline: none; font: inherit; font-size: 13px;
+  background: transparent; color: var(--fg-2); padding: 4px 0;
+}
+.kit-woop-inp:focus { border-bottom-color: var(--fg-muted); }
+.kit-woop-inp::placeholder { color: var(--fg-faint); }
+
+/* ---- Notification panel (Habits screen) ------------------------------ */
+.habit-item-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.habit-item-row:last-of-type { border-bottom: none; }
+.habit-item-row__name { flex: 1; min-width: 0; font-size: 14px; color: var(--fg-2); }
+.habit-item-row__actions { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+
+.bell-btn {
+  background: none; border: none; cursor: pointer;
+  padding: 8px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg-faint);
+  transition: color var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease);
+}
+.bell-btn:hover { background: var(--surface-2); }
+.bell-btn--on { color: var(--accent); }
+.bell-btn--on:hover { background: var(--accent-tint); }
+.habit-item-row.is-expanded .bell-btn { background: var(--surface-2); }
+
+.notif-panel {
+  padding: 4px 0 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-soft);
+  display: flex; flex-direction: column; gap: 14px;
+  margin: 0 -4px;
+  padding-left: 4px; padding-right: 4px;
+}
+.notif-panel:last-child { border-bottom: none; }
+
+.notif-panel__top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 12px;
+}
+.notif-panel__top-label { font-size: 12px; color: var(--fg-muted); letter-spacing: .04em; }
+
+.notif-section__label {
+  font-size: 11px; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--fg-muted); margin-bottom: 8px;
+}
+
+.notif-times { display: flex; flex-direction: column; gap: 8px; }
+.notif-time-row { display: flex; align-items: center; gap: 8px; }
+.notif-time-row__del { margin-left: auto; }
+.notif-time-add {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer; font: inherit;
+  color: var(--fg-muted); font-size: 12px; padding: 4px 0;
+  transition: color var(--motion-fast) var(--ease);
+}
+.notif-time-add:hover { color: var(--fg); }
+
+.notif-next {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--fg-2);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.notif-next__dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.notif-next__label { color: var(--fg-muted); font-size: 12px; }
+.notif-next__time { font-variant-numeric: tabular-nums; }
+
+.notif-panel__body--off { opacity: .45; pointer-events: none; }
+
+.notif-footer { display: flex; justify-content: flex-end; }
+.notif-footer .nh-btn {
+  min-height: 30px; padding: 5px 10px;
+  font-size: 12px; font-weight: 500;
+}
+
+/* ---- History --------------------------------------------------------- */
+.kit-history-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  cursor: pointer; transition: border-color .15s var(--ease);
+}
+.kit-history-card + .kit-history-card { margin-top: 10px; }
+.kit-history-card:hover { border-color: var(--fg-faint); }
+.kit-history-date { font-size: 12px; color: var(--fg-muted); margin-bottom: 6px; letter-spacing: .04em; }
+.kit-history-preview {
+  font-size: 14px; color: var(--fg-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kit-history-field-label {
+  font-size: 11px; color: var(--fg-muted);
+  text-transform: uppercase; letter-spacing: .08em; font-weight: 500;
+  margin-top: 12px; margin-bottom: 4px;
+}
+.kit-history-field-value {
+  font-size: 14px; color: var(--fg); line-height: 1.55; white-space: pre-wrap;
+}
+
+/* ---- Wishes ---------------------------------------------------------- */
+.kit-wish-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 14px;
+}
+.kit-wish-item:last-child { border-bottom: none; }
+
+/* ---- Login screen (Variant A — Centered) ----------------------------- */
+.kit-login {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 28px;
+}
+.kit-login__brand { text-align: center; margin-bottom: 32px; }
+.kit-login__mark { display: inline-flex; margin-bottom: 14px; }
+.kit-login__name {
+  font-size: 20px; font-weight: 700; letter-spacing: .14em; color: var(--fg);
+}
+.kit-login__name span { color: var(--fg-muted); }
+.kit-login__tag { margin-top: 8px; font-size: 13px; color: var(--fg-muted); }
+
+.kit-login__tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.kit-login__tab {
+  flex: 1; background: none; border: none; cursor: pointer; font: inherit;
+  font-size: 14px; font-weight: 500; color: var(--fg-muted);
+  padding: 10px 0 12px; position: relative;
+  transition: color var(--motion-fast) var(--ease);
+}
+.kit-login__tab.is-active { color: var(--fg); font-weight: 600; }
+.kit-login__tab.is-active::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 2px; background: var(--accent); border-radius: 2px;
+}
+
+.kit-login__oauth { display: flex; flex-direction: column; gap: 12px; }
+.kit-login__oauth-btn { gap: 10px; min-height: 46px; font-weight: 500; }
+
+.kit-login__divider {
+  display: flex; align-items: center; gap: 12px; margin: 20px 0;
+}
+.kit-login__divider span { flex: 1; height: 1px; background: var(--border); }
+.kit-login__divider em { font-style: normal; font-size: 12px; color: var(--fg-faint); }
+
+.kit-login__form { display: flex; flex-direction: column; gap: 14px; }
+.kit-login__form .nh-input { min-height: 44px; }
+.kit-login__label-row { display: flex; align-items: baseline; justify-content: space-between; }
+.kit-login__forgot { font-size: 12px; color: var(--fg-muted); text-decoration: none; cursor: pointer; }
+.kit-login__forgot:hover { color: var(--fg); }
+
+.kit-login__legal {
+  margin: 24px 0 0; text-align: center;
+  font-size: 11px; color: var(--fg-faint); line-height: 1.7;
+}
