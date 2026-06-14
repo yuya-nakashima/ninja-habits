@@ -2,21 +2,23 @@
   "name": "ninja-habits",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20 <21"
+  },
   "scripts": {
-    "api:build": "tsc -p tsconfig.api.json",
+    "api:build": "tsc -p tsconfig.api.json && npm run api:copy-migrations",
+    "api:copy-migrations": "node -e \"const fs=require('fs');fs.rmSync('dist-api/migrations',{recursive:true,force:true});fs.cpSync('api/migrations','dist-api/migrations',{recursive:true})\"",
     "api:dev": "tsx watch api/server.ts",
     "api:migrate": "tsx api/migrate.ts",
     "api:start": "node dist-api/server.js",
     "dev": "vite",
-    "build": "tsc -b && tsc -p tsconfig.api.json && vite build",
+    "build": "tsc -b && npm run api:build && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "pg": "^8.21.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "pg": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
@@ -24,6 +26,8 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.22.4",
     "typescript": "^5.5.0",
     "vite": "^5.4.0",
