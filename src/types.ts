@@ -224,6 +224,7 @@ export interface WishItemUpdatePayload { content: string; version: number }
 /** API-backed persistence operations passed to screens. */
 export interface AppRepository {
   saveReflection(date: string, payload: ReflectionPayload): Promise<HistoryEntry>;
+  listReflections(range?: { from?: string; to?: string }): Promise<HistoryEntry[]>;
   saveGoalLog(date: string, goalId: string, payload: GoalLogPayload): Promise<DailyLogResult>;
   saveHabitItemLog(date: string, habitItemId: string, payload: HabitItemLogPayload): Promise<DailyLogResult>;
   createGoal(payload: GoalCreatePayload): Promise<GoalMaster>;

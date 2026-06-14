@@ -14,8 +14,8 @@ import {
 import {
   createGoal, createHabitGroup, createHabitItem, createWishCategory, createWishItem,
   deleteGoal, deleteHabitGroup, deleteHabitItem, deleteWishCategory, deleteWishItem,
-  fetchTodayState, getApiConfig, saveGoalLog, saveHabitItemLog, saveNotification, saveReflection,
-  updateGoal, updateHabitGroup, updateHabitItem, updateWishCategory, updateWishItem,
+  fetchReflections, fetchTodayState, getApiConfig, saveGoalLog, saveHabitItemLog, saveNotification,
+  saveReflection, updateGoal, updateHabitGroup, updateHabitItem, updateWishCategory, updateWishItem,
 } from './apiClient';
 import { getTodayISO } from './infrastructure';
 import { advanceDailyState } from './domain';
@@ -57,6 +57,7 @@ export default function App() {
     if (!apiConfig || !authSession) return null;
     return {
       saveReflection: (date, payload) => saveReflection(apiConfig, authSession, date, payload),
+      listReflections: range => fetchReflections(apiConfig, authSession, range),
       saveGoalLog: (date, goalId, payload) => saveGoalLog(apiConfig, authSession, date, goalId, payload),
       saveHabitItemLog: (date, habitItemId, payload) => saveHabitItemLog(apiConfig, authSession, date, habitItemId, payload),
       createGoal: payload => createGoal(apiConfig, authSession, payload),

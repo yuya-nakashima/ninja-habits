@@ -15,7 +15,7 @@ import {
   parseGroupCreateRequest, parseGroupUpdateRequest, parseItemCreateRequest,
   parseItemUpdateRequest, parseNotificationRequest,
 } from './habits.js';
-import { parseReflectionRequest, upsertReflection } from './reflections.js';
+import { listReflections, parseReflectionRequest, parseReflectionsQuery, upsertReflection } from './reflections.js';
 import { buildTodayResponse, ensureUser } from './today.js';
 import {
   createCategory, createItem as createWishItem, deleteCategory, deleteItem as deleteWishItem,
@@ -305,6 +305,16 @@ const server = createServer(async (req, res) => {
       if (result.kind === 'not_found') return sendNotFound(res);
       if (result.kind === 'conflict') return sendConflict(res);
       sendJson(res, 200, result.log);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/v1/reflections') {
+      const parsed = parseReflectionsQuery(url.searchParams.get('from'), url.searchParams.get('to'), todayJst());
+      if (!parsed.ok) {
+        sendValidationError(res, parsed.fields);
+        return;
+      }
+      sendJson(res, 200, { reflections: await listReflections(authUser, parsed.query) });
       return;
     }
 
