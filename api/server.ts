@@ -17,6 +17,13 @@ import {
 } from './habits.js';
 import { parseReflectionRequest, upsertReflection } from './reflections.js';
 import { buildTodayResponse, ensureUser } from './today.js';
+import {
+  createCategory, createItem as createWishItem, deleteCategory, deleteItem as deleteWishItem,
+  listCategories, reorderCategories, reorderItems as reorderWishItems, updateCategory,
+  updateItem as updateWishItem,
+  parseCategoryCreateRequest, parseCategoryUpdateRequest,
+  parseItemCreateRequest as parseWishItemCreateRequest, parseItemUpdateRequest as parseWishItemUpdateRequest,
+} from './wishes.js';
 
 const config = readConfig();
 const MAX_BODY_BYTES = 64 * 1024;
@@ -194,6 +201,87 @@ const server = createServer(async (req, res) => {
       const input = await parseBody(req, res, parseItemUpdateRequest);
       if (!input) return;
       const result = await updateItem(authUser, itemId, input);
+      if (result.kind === 'not_found') return sendNotFound(res);
+      if (result.kind === 'conflict') return sendConflict(res);
+      sendJson(res, 200, result.record);
+      return;
+    }
+
+    // -----------------------------------------------------------------------
+    // Wish List（カテゴリ・項目）
+    // -----------------------------------------------------------------------
+
+    if (url.pathname === '/v1/wish-categories') {
+      if (req.method === 'GET') {
+        sendJson(res, 200, { categories: await listCategories(authUser) });
+        return;
+      }
+      if (req.method === 'POST') {
+        const input = await parseBody(req, res, parseCategoryCreateRequest);
+        if (!input) return;
+        sendJson(res, 201, await createCategory(authUser, input));
+        return;
+      }
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/v1/wish-categories/reorder') {
+      const input = await parseBody(req, res, parseReorderRequest);
+      if (!input) return;
+      const result = await reorderCategories(authUser, input);
+      if (result.kind === 'not_found') return sendNotFound(res);
+      if (result.kind === 'conflict') return sendConflict(res);
+      sendJson(res, 200, { items: result.items });
+      return;
+    }
+
+    const wishItemsReorderPath = url.pathname.match(/^\/v1\/wish-categories\/([^/]+)\/items\/reorder$/);
+    if (wishItemsReorderPath && req.method === 'PATCH') {
+      const input = await parseBody(req, res, parseReorderRequest);
+      if (!input) return;
+      const result = await reorderWishItems(authUser, decodeURIComponent(wishItemsReorderPath[1]), input);
+      if (result.kind === 'not_found') return sendNotFound(res);
+      if (result.kind === 'conflict') return sendConflict(res);
+      sendJson(res, 200, { items: result.items });
+      return;
+    }
+
+    const wishItemsPath = url.pathname.match(/^\/v1\/wish-categories\/([^/]+)\/items$/);
+    if (wishItemsPath && req.method === 'POST') {
+      const input = await parseBody(req, res, parseWishItemCreateRequest);
+      if (!input) return;
+      const result = await createWishItem(authUser, decodeURIComponent(wishItemsPath[1]), input);
+      if (result.kind === 'not_found') return sendNotFound(res);
+      if (result.kind === 'conflict') return sendConflict(res);
+      sendJson(res, 201, result.record);
+      return;
+    }
+
+    const wishCategoryPath = url.pathname.match(/^\/v1\/wish-categories\/([^/]+)$/);
+    if (wishCategoryPath && (req.method === 'PATCH' || req.method === 'DELETE')) {
+      const categoryId = decodeURIComponent(wishCategoryPath[1]);
+      if (req.method === 'DELETE') {
+        if (await deleteCategory(authUser, categoryId) === 'not_found') return sendNotFound(res);
+        return sendNoContent(res);
+      }
+      const input = await parseBody(req, res, parseCategoryUpdateRequest);
+      if (!input) return;
+      const result = await updateCategory(authUser, categoryId, input);
+      if (result.kind === 'not_found') return sendNotFound(res);
+      if (result.kind === 'conflict') return sendConflict(res);
+      sendJson(res, 200, result.record);
+      return;
+    }
+
+    const wishItemPath = url.pathname.match(/^\/v1\/wish-items\/([^/]+)$/);
+    if (wishItemPath && (req.method === 'PATCH' || req.method === 'DELETE')) {
+      const itemId = decodeURIComponent(wishItemPath[1]);
+      if (req.method === 'DELETE') {
+        if (await deleteWishItem(authUser, itemId) === 'not_found') return sendNotFound(res);
+        return sendNoContent(res);
+      }
+      const input = await parseBody(req, res, parseWishItemUpdateRequest);
+      if (!input) return;
+      const result = await updateWishItem(authUser, itemId, input);
       if (result.kind === 'not_found') return sendNotFound(res);
       if (result.kind === 'conflict') return sendConflict(res);
       sendJson(res, 200, result.record);

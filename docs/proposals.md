@@ -4,17 +4,24 @@
 
 ## 2026-06-12
 
-- 提案: 習慣グループの削除も論理削除にするため、`habit_groups` に `is_active` を追加する（migration 002）
-- 理由: 物理削除だと CASCADE で項目とログが消え streak/履歴が壊れる。グループ削除時は group.is_active=false のみで配下項目は触らない（復活時に項目ごと戻り、「削除前にどれがアクティブだったか」を失わない）。レビューで合意済み
-- 決定済み: 通知設定の PUT は upsert 規約に合わせる（行なし+version 省略→v1 作成 / 行なし+指定→409 / あり+省略→409 / 不一致→409）。`GET /v1/today` の `notif.version` は通知行が無ければ `null`（従来は 1 を捏造しており、新規/更新を判別できなかった）
-- 次のアクション: Wish List CRUD も同じ規約で実装する（T-027）
-
-## 2026-06-12
+### 目標マスタ CRUD（T-025）
 
 - 提案: `DELETE /v1/goals/{goalId}` は物理削除ではなく論理削除（`is_active = false`）にする
 - 理由: 物理削除だと `goal_logs` が CASCADE で消え、streak と履歴が変わってしまう。非アクティブ化は `PATCH` の `is_active` でも可能で、DELETE はその冪等なショートカットとする
 - 決定済み: 作成は `201`、`sort_order` はサーバーが末尾を割り当て。`/reorder` は送られた items を渡された順に 1..n で並べ直す（クライアントは全件送信）。`PATCH` の `version` 欠落は upsert ではないため `409` でなく `422`
-- 次のアクション: GoalsScreen に並び替え UI（drag）が未実装のため、reorder API の画面接続は別タスク。習慣グループ/項目・Wish List の CRUD も同じ規約で実装する
+- 次のアクション: GoalsScreen に並び替え UI（drag）が未実装のため、reorder API の画面接続は別タスク
+
+### 習慣グループ/項目・通知（T-026）
+
+- 提案: 習慣グループの削除も論理削除にするため、`habit_groups` に `is_active` を追加する（migration 002）
+- 理由: 物理削除だと CASCADE で項目とログが消え streak/履歴が壊れる。グループ削除時は group.is_active=false のみで配下項目は触らない（復活時に項目ごと戻り、「削除前にどれがアクティブだったか」を失わない）。レビューで合意済み
+- 決定済み: 通知設定の PUT は upsert 規約に合わせる（行なし+version 省略→v1 作成 / 行なし+指定→409 / あり+省略→409 / 不一致→409）。`GET /v1/today` の `notif.version` は通知行が無ければ `null`（従来は 1 を捏造しており、新規/更新を判別できなかった）
+
+### Wish List CRUD（T-027）
+
+- 提案: Wish List（`wish_categories` / `wish_items`）の削除は物理削除（CASCADE）とする
+- 理由: goals/habits は日次ログ・streak を保持するため論理削除にしたが、Wish List はログや集計と無関係で保持すべき履歴が無い。is_active カラムを足す必要がなく、カテゴリ削除は FK CASCADE で配下項目も消えてよい。物理削除のため再 DELETE は `404`（goals/habits の冪等 204 とは挙動が異なる点に注意）
+- 決定済み: 作成 `201`・末尾 sort_order・`/reorder` は全件 1..n、は goals/habits と同じ規約を踏襲
 
 ## 2026-06-11
 

@@ -4,6 +4,8 @@ import type {
   HabitGroup, HabitGroupCreatePayload, HabitGroupMaster, HabitGroupUpdatePayload,
   HabitItemCreatePayload, HabitItemLogPayload, HabitItemMaster, HabitItemUpdatePayload,
   HistoryEntry, NotificationPayload, NotificationResult, ReflectionPayload, StreakCell, WishCategory,
+  WishCategoryCreatePayload, WishCategoryMaster, WishCategoryUpdatePayload,
+  WishItemCreatePayload, WishItemMaster, WishItemUpdatePayload,
 } from './types';
 
 export interface ApiConfig {
@@ -250,6 +252,30 @@ export async function saveNotification(config: ApiConfig, session: AuthSession, 
   if (payload.version !== undefined) body.version = payload.version;
 
   return await requestJson(config, session, 'PUT', `/v1/habit-items/${itemId}/notification`, body) as NotificationResult;
+}
+
+export async function createWishCategory(config: ApiConfig, session: AuthSession, payload: WishCategoryCreatePayload): Promise<WishCategoryMaster> {
+  return await requestJson(config, session, 'POST', '/v1/wish-categories', { name: payload.name }) as WishCategoryMaster;
+}
+
+export async function updateWishCategory(config: ApiConfig, session: AuthSession, categoryId: string, payload: WishCategoryUpdatePayload): Promise<WishCategoryMaster> {
+  return await requestJson(config, session, 'PATCH', `/v1/wish-categories/${categoryId}`, { name: payload.name, version: payload.version }) as WishCategoryMaster;
+}
+
+export async function deleteWishCategory(config: ApiConfig, session: AuthSession, categoryId: string): Promise<void> {
+  await requestJson(config, session, 'DELETE', `/v1/wish-categories/${categoryId}`);
+}
+
+export async function createWishItem(config: ApiConfig, session: AuthSession, categoryId: string, payload: WishItemCreatePayload): Promise<WishItemMaster> {
+  return await requestJson(config, session, 'POST', `/v1/wish-categories/${categoryId}/items`, { content: payload.content }) as WishItemMaster;
+}
+
+export async function updateWishItem(config: ApiConfig, session: AuthSession, itemId: string, payload: WishItemUpdatePayload): Promise<WishItemMaster> {
+  return await requestJson(config, session, 'PATCH', `/v1/wish-items/${itemId}`, { content: payload.content, version: payload.version }) as WishItemMaster;
+}
+
+export async function deleteWishItem(config: ApiConfig, session: AuthSession, itemId: string): Promise<void> {
+  await requestJson(config, session, 'DELETE', `/v1/wish-items/${itemId}`);
 }
 
 function buildAuthHeaders(session: AuthSession): Record<string, string> {

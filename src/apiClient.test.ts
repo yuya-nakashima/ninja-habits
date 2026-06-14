@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  ApiConflictError, createGoal, createHabitGroup, deleteGoal, mapTodayResponse,
-  saveGoalLog, saveHabitItemLog, saveNotification, saveReflection, updateGoal, updateHabitItem,
+  ApiConflictError, createGoal, createHabitGroup, createWishCategory, deleteGoal, deleteWishItem,
+  mapTodayResponse, saveGoalLog, saveHabitItemLog, saveNotification, saveReflection,
+  updateGoal, updateHabitItem, updateWishItem,
 } from './apiClient';
 import type { ApiTodayResponse } from './apiClient';
 import type { AuthSession } from './auth';
@@ -312,5 +313,33 @@ describe('goal master client', () => {
     await saveNotification(config, session, 'item-uuid', payload);
 
     expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual(payload);
+  });
+
+  it('POSTs a new wish category', async () => {
+    const master = { id: 'cat-uuid', name: '読みたい本', sort_order: 1, version: 1 };
+    const fetchMock = stubFetch(201, master);
+
+    const created = await createWishCategory(config, session, { name: '読みたい本' });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://api.example/v1/wish-categories', expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ name: '読みたい本' });
+    expect(created).toEqual(master);
+  });
+
+  it('PATCHes a wish item with content + version', async () => {
+    const fetchMock = stubFetch(200, { id: 'item-uuid', category_id: 'cat-uuid', content: '再読', version: 2 });
+
+    await updateWishItem(config, session, 'item-uuid', { content: '再読', version: 1 });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://api.example/v1/wish-items/item-uuid', expect.objectContaining({ method: 'PATCH' }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ content: '再読', version: 1 });
+  });
+
+  it('DELETEs a wish item and accepts 204', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204, json: () => Promise.reject(new Error('no body')) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteWishItem(config, session, 'item-uuid')).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith('http://api.example/v1/wish-items/item-uuid', expect.objectContaining({ method: 'DELETE' }));
   });
 });

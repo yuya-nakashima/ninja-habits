@@ -12,9 +12,10 @@ import {
   startHostedUiLogout,
 } from './auth';
 import {
-  createGoal, createHabitGroup, createHabitItem, deleteGoal, deleteHabitGroup, deleteHabitItem,
+  createGoal, createHabitGroup, createHabitItem, createWishCategory, createWishItem,
+  deleteGoal, deleteHabitGroup, deleteHabitItem, deleteWishCategory, deleteWishItem,
   fetchTodayState, getApiConfig, saveGoalLog, saveHabitItemLog, saveNotification, saveReflection,
-  updateGoal, updateHabitGroup, updateHabitItem,
+  updateGoal, updateHabitGroup, updateHabitItem, updateWishCategory, updateWishItem,
 } from './apiClient';
 import { getTodayISO } from './infrastructure';
 import { advanceDailyState } from './domain';
@@ -68,6 +69,12 @@ export default function App() {
       updateHabitItem: (itemId, payload) => updateHabitItem(apiConfig, authSession, itemId, payload),
       deleteHabitItem: itemId => deleteHabitItem(apiConfig, authSession, itemId),
       saveNotification: (itemId, payload) => saveNotification(apiConfig, authSession, itemId, payload),
+      createWishCategory: payload => createWishCategory(apiConfig, authSession, payload),
+      updateWishCategory: (categoryId, payload) => updateWishCategory(apiConfig, authSession, categoryId, payload),
+      deleteWishCategory: categoryId => deleteWishCategory(apiConfig, authSession, categoryId),
+      createWishItem: (categoryId, payload) => createWishItem(apiConfig, authSession, categoryId, payload),
+      updateWishItem: (itemId, payload) => updateWishItem(apiConfig, authSession, itemId, payload),
+      deleteWishItem: itemId => deleteWishItem(apiConfig, authSession, itemId),
       reloadToday: async () => setState(await fetchTodayState(apiConfig, authSession)),
     };
   }, [apiConfig, authSession]);

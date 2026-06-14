@@ -18,6 +18,12 @@ import {
   applyItemMasterUpdated,
   applyNotifSaved,
   applySaveReflection,
+  applyWishCategoryCreated,
+  applyWishCategoryDeleted,
+  applyWishCategoryUpdated,
+  applyWishItemCreated,
+  applyWishItemDeleted,
+  applyWishItemUpdated,
 } from './application';
 
 // ---------------------------------------------------------------------------
@@ -205,6 +211,54 @@ describe('habit master apply functions', () => {
     const saved = { on: true, times: ['08:00'], days: [false, false, false, false, false, true, true], version: 3 };
     const result = applyNotifSaved(makeYesterdayState(), 'grp1', 'it1', saved);
     expect(result.groups[0].items[0].notif).toEqual(saved);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wish List results
+// ---------------------------------------------------------------------------
+
+describe('wish apply functions', () => {
+  function stateWithWishes() {
+    return {
+      ...makeYesterdayState(),
+      wishes: [
+        { id: 'cat1', name: '読みたい本', version: 1, items: [
+          { id: 'w1', content: 'アトミック・ハビット', version: 1 },
+        ] },
+      ],
+    };
+  }
+
+  it('applyWishCategoryCreated appends an empty category', () => {
+    const result = applyWishCategoryCreated(stateWithWishes(), { id: 'cat2', name: '行きたい場所', version: 1 });
+    expect(result.wishes).toHaveLength(2);
+    expect(result.wishes[1]).toEqual({ id: 'cat2', name: '行きたい場所', version: 1, items: [] });
+  });
+
+  it('applyWishCategoryUpdated updates name/version, keeps items', () => {
+    const result = applyWishCategoryUpdated(stateWithWishes(), { id: 'cat1', name: '読んだ本', version: 2 });
+    expect(result.wishes[0].name).toBe('読んだ本');
+    expect(result.wishes[0].version).toBe(2);
+    expect(result.wishes[0].items).toHaveLength(1);
+  });
+
+  it('applyWishCategoryDeleted removes the category', () => {
+    expect(applyWishCategoryDeleted(stateWithWishes(), 'cat1').wishes).toHaveLength(0);
+  });
+
+  it('applyWishItemCreated appends an item to the category', () => {
+    const result = applyWishItemCreated(stateWithWishes(), { id: 'w2', category_id: 'cat1', content: '7つの習慣', version: 1 });
+    expect(result.wishes[0].items.map(i => i.id)).toEqual(['w1', 'w2']);
+  });
+
+  it('applyWishItemUpdated updates content/version', () => {
+    const result = applyWishItemUpdated(stateWithWishes(), 'cat1', { id: 'w1', category_id: 'cat1', content: '再読', version: 2 });
+    expect(result.wishes[0].items[0]).toEqual({ id: 'w1', content: '再読', version: 2 });
+  });
+
+  it('applyWishItemDeleted removes the item', () => {
+    expect(applyWishItemDeleted(stateWithWishes(), 'cat1', 'w1').wishes[0].items).toHaveLength(0);
   });
 });
 

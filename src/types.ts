@@ -202,6 +202,25 @@ export interface NotificationResult {
   version: number;
 }
 
+/** Wish List カテゴリ・項目マスタ（/v1/wish-* 系のレスポンス）。 */
+export interface WishCategoryMaster {
+  id: string;
+  name: string;
+  version: number;
+}
+
+export interface WishItemMaster {
+  id: string;
+  category_id: string;
+  content: string;
+  version: number;
+}
+
+export interface WishCategoryCreatePayload { name: string }
+export interface WishCategoryUpdatePayload { name: string; version: number }
+export interface WishItemCreatePayload { content: string }
+export interface WishItemUpdatePayload { content: string; version: number }
+
 /** API-backed persistence operations passed to screens. */
 export interface AppRepository {
   saveReflection(date: string, payload: ReflectionPayload): Promise<HistoryEntry>;
@@ -217,5 +236,11 @@ export interface AppRepository {
   updateHabitItem(itemId: string, payload: HabitItemUpdatePayload): Promise<HabitItemMaster>;
   deleteHabitItem(itemId: string): Promise<void>;
   saveNotification(itemId: string, payload: NotificationPayload): Promise<NotificationResult>;
+  createWishCategory(payload: WishCategoryCreatePayload): Promise<WishCategoryMaster>;
+  updateWishCategory(categoryId: string, payload: WishCategoryUpdatePayload): Promise<WishCategoryMaster>;
+  deleteWishCategory(categoryId: string): Promise<void>;
+  createWishItem(categoryId: string, payload: WishItemCreatePayload): Promise<WishItemMaster>;
+  updateWishItem(itemId: string, payload: WishItemUpdatePayload): Promise<WishItemMaster>;
+  deleteWishItem(itemId: string): Promise<void>;
   reloadToday(): Promise<void>;
 }
