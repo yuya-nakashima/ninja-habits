@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 import { authenticate } from './auth.js';
-import { readConfig } from './config.js';
+import { assertSafeConfig, readConfig } from './config.js';
 import { parseDailyLogRequest, upsertGoalLog, upsertHabitItemLog, type DailyLogKind } from './dailyLogs.js';
 import { isIsoDate, todayJst } from './dates.js';
 import { query } from './db.js';
@@ -26,6 +26,7 @@ import {
 } from './wishes.js';
 
 const config = readConfig();
+assertSafeConfig(config);
 const MAX_BODY_BYTES = 64 * 1024;
 
 const server = createServer(async (req, res) => {

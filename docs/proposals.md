@@ -2,7 +2,15 @@
 
 このファイルは、作業中に出た提案や検討メモを残すためのログです。
 
-## 2026-06-12
+## 2026-06-14
+
+### Cognito 実接続（T-029）
+
+- 決定: API へ送るトークンは **ID トークン**（アクセストークンは email を持たないため）。フロント `buildAuthHeaders` を ID トークン送出に変更
+- 決定: API は **ID トークンのみ受理**（`token_use === 'id'`）し、`aud === COGNITO_CLIENT_ID` を照合。アクセストークン受理は ensureUser の upsert で email を上書きする実害があったため廃止。検証ロジックは純関数 `validateClaims` に切り出し
+- 通し検証: dev に auth-stack をデプロイ済み（`ninja-habits-deploy` プロファイル）。出力 — UserPoolId `ap-northeast-1_Zei8pcJQL` / ClientId `238a2ljuo5nnggq76m7df4p20d` / Hosted UI `https://ninja-habits-dev.auth.ap-northeast-1.amazoncognito.com`。Hosted UI ログイン → ID トークン取得 → API が JWT 検証 → `/v1/me`・`/v1/today` 200、改竄トークン/アクセストークンは 401 を確認
+- 補足: デプロイは `ninja-habits-deploy` プロファイルが必要（既定の `body-data-lab-cli` は権限なし）。プレビューブラウザは外部オリジンへ遷移できないため、通しログインは実 Hosted UI に対する curl(PKCE) で実施
+- 次のアクション: T-030 で dev に hosting/api/database をデプロイし、callbackUrls に本番 Web オリジンを追加。テストユーザー `ninja-dev@example.com`（dev pool, localhost callback のみ）は不要になれば削除
 
 ### 目標マスタ CRUD（T-025）
 

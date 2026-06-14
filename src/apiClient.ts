@@ -306,7 +306,9 @@ export async function deleteWishItem(config: ApiConfig, session: AuthSession, it
 
 function buildAuthHeaders(session: AuthSession): Record<string, string> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${session.accessToken}`,
+    // ID トークンを送る。Cognito のアクセストークンには email クレームが無く、
+    // API 側で email を特定できないため（ID トークンには email と aud=clientId が入る）。
+    Authorization: `Bearer ${session.idToken}`,
     Accept: 'application/json',
   };
 
