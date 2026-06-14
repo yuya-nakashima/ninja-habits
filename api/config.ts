@@ -18,6 +18,26 @@ export function readConfig(): ApiConfig {
   };
 }
 
+/**
+ * 危険な設定を起動時に弾く（誤設定での認証バイパス・検証スキップ防止）。
+ * readConfig とは分離し、migration など他経路には影響させない。
+ */
+export function assertSafeConfig(config: ApiConfig): void {
+  if (config.devAuth) {
+    // dev ヘッダ認証は任意ユーザーになりすませる。本番/実 Cognito と併用しない。
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('API_DEV_AUTH must be disabled when NODE_ENV=production.');
+    }
+    if (config.cognitoIssuer) {
+      throw new Error('API_DEV_AUTH must not be combined with a Cognito issuer. Disable API_DEV_AUTH for real auth.');
+    }
+  }
+  // 実 Cognito モードでは aud 検証を必須にする（同一 User Pool の別クライアント発行トークンを弾く）。
+  if (config.cognitoIssuer && !config.cognitoClientId) {
+    throw new Error('COGNITO_CLIENT_ID is required when COGNITO_ISSUER / COGNITO_USER_POOL_ID is set.');
+  }
+}
+
 function readCognitoIssuer(): string | null {
   if (process.env.COGNITO_ISSUER) return process.env.COGNITO_ISSUER.replace(/\/+$/, '');
 

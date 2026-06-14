@@ -16,6 +16,7 @@ export interface AuthConfig {
 
 const SESSION_KEY = 'ninja-habits-auth-session';
 const PKCE_VERIFIER_KEY = 'ninja-habits-pkce-verifier';
+const OAUTH_STATE_KEY = 'ninja-habits-oauth-state';
 
 export function getAuthConfig(): AuthConfig | null {
   const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID;
@@ -70,12 +71,15 @@ export function startDevLogin(): AuthSession {
 export function clearAuthSession() {
   sessionStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(PKCE_VERIFIER_KEY);
+  sessionStorage.removeItem(OAUTH_STATE_KEY);
 }
 
 export async function startHostedUiLogin(config: AuthConfig) {
   const verifier = createCodeVerifier();
   const challenge = await createCodeChallenge(verifier);
+  const state = createCodeVerifier();
   sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
+  sessionStorage.setItem(OAUTH_STATE_KEY, state);
 
   const params = new URLSearchParams({
     client_id: config.clientId,
@@ -84,6 +88,7 @@ export async function startHostedUiLogin(config: AuthConfig) {
     redirect_uri: config.redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
+    state,
   });
 
   window.location.assign(`${config.domain}/oauth2/authorize?${params.toString()}`);
@@ -101,6 +106,14 @@ export function startHostedUiLogout(config: AuthConfig) {
 export async function completeHostedUiCallback(config: AuthConfig, url: URL): Promise<AuthSession | null> {
   const code = url.searchParams.get('code');
   if (!code) return loadAuthSession();
+
+  // OAuth state を照合して CSRF / 意図しない callback 混入を弾く
+  const returnedState = url.searchParams.get('state');
+  const savedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+  if (!savedState || returnedState !== savedState) {
+    clearAuthSession();
+    throw new Error('OAuth state mismatch.');
+  }
 
   const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
   if (!verifier) throw new Error('Missing PKCE verifier.');
@@ -137,6 +150,7 @@ export async function completeHostedUiCallback(config: AuthConfig, url: URL): Pr
   };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   sessionStorage.removeItem(PKCE_VERIFIER_KEY);
+  sessionStorage.removeItem(OAUTH_STATE_KEY);
 
   window.history.replaceState({}, document.title, window.location.pathname);
   return session;

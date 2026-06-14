@@ -40,6 +40,9 @@ DB は `users.cognito_sub` をユーザー特定の基準にし、自前の `pas
 - フロントは Hosted UI (Authorization Code + PKCE) でログインし、API へは **ID トークン**を `Authorization: Bearer` で送る。アクセストークンには `email` クレームが無く、サーバーがユーザーの email を特定できないため。
 - API は JWT を検証する: 署名（User Pool の JWKS）、`iss` 一致、`exp` 未来、`token_use === 'id'`、`aud === COGNITO_CLIENT_ID`（設定時）。アクセストークンや別クライアント発行トークンは受理しない。
 - ローカル開発では `API_DEV_AUTH=true` のとき dev ヘッダ（`x-dev-cognito-sub` / `x-dev-email`）認証に切り替わる。本番では無効にする。
+- 起動時ガード（`assertSafeConfig`）で誤設定を弾く: `API_DEV_AUTH=true` を `NODE_ENV=production` または Cognito issuer と併用したら起動失敗。issuer 設定時は `COGNITO_CLIENT_ID`（aud 検証）必須。
+- email を持たない ID トークンは `401`（email 前提の設計のため。既存 email を unknown で上書きしない）。
+- フロントの Hosted UI フローは PKCE に加えて `state` を保存・照合する。
 
 ```http
 GET /v1/me

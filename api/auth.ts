@@ -54,10 +54,11 @@ export async function authenticate(req: IncomingMessage, config: ApiConfig): Pro
   });
   if (!claims?.sub) return null;
 
-  return {
-    cognitoSub: claims.sub,
-    email: typeof claims.email === 'string' ? claims.email : `${claims.sub}@unknown.local`,
-  };
+  // email を前提に ID トークンを使う設計なので、email 不在は認証失敗扱い。
+  // （偽の {sub}@unknown.local で既存 email を上書きするのを防ぐ）
+  if (typeof claims.email !== 'string' || claims.email.length === 0) return null;
+
+  return { cognitoSub: claims.sub, email: claims.email };
 }
 
 export interface JwtExpectations {
