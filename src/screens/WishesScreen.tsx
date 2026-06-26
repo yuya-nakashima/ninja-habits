@@ -2,11 +2,11 @@
 // 追加/削除は即 API、カテゴリ名・項目本文は blur 時に差分 PATCH する。
 
 import React from 'react';
-import type { ScreenProps } from '../types';
-import { ApiConflictError } from '../apiClient';
+import type { ScreenProps } from '../screenTypes';
 import {
   applyWishCategoryCreated, applyWishCategoryDeleted, applyWishCategoryUpdated,
   applyWishItemCreated, applyWishItemDeleted, applyWishItemUpdated,
+  classifyRepositoryRequestFailure,
 } from '../application';
 import { TopBar, EmptyState } from '../components/Primitives';
 import { I } from '../components/Icons';
@@ -45,7 +45,7 @@ export default function WishesScreen({ goto, state, setState, repo }: ScreenProp
     } catch (err) {
       // 楽観更新を破棄してサーバー状態へ戻す（409 以外の失敗でも optimistic state を残さない）
       await repo.reloadToday().catch(() => undefined);
-      safeSetError(err instanceof ApiConflictError ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
+      safeSetError(classifyRepositoryRequestFailure(err) === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
     } finally {
       pendingRef.current.delete(pendingKey);
       if (mountedRef.current) setPending(new Set(pendingRef.current));

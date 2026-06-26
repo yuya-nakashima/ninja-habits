@@ -1,6 +1,6 @@
 // Infrastructure — environment-dependent utilities.
 
-import type { JSTNow } from './types';
+import type { JSTNow } from './domainTypes';
 
 export function createId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

@@ -103,10 +103,29 @@ export function startHostedUiLogout(config: AuthConfig) {
   window.location.assign(`${config.domain}/logout?${params.toString()}`);
 }
 
-export async function completeHostedUiCallback(config: AuthConfig, url: URL): Promise<AuthSession | null> {
-  const code = url.searchParams.get('code');
-  if (!code) return loadAuthSession();
+// 単発の認可コードを「1回だけ」交換するための in-flight ガード。
+// dev の React StrictMode はコールバック effect を二重実行するため、共有しないと
+// 同じ code を2回 /oauth2/token へ送り、2回目が 400（invalid_grant）になる。
+// 冪等性は auth.ts に閉じ込め、App.tsx は完了処理を呼ぶだけにする。
+let inflightCallback: Promise<AuthSession | null> | null = null;
 
+export function completeHostedUiCallback(config: AuthConfig, url: URL): Promise<AuthSession | null> {
+  // 進行中の交換があれば同じ Promise を共有する（二重実行でも交換は1回、成功 session を共有）。
+  if (inflightCallback) return inflightCallback;
+
+  const code = url.searchParams.get('code');
+  if (!code) return Promise.resolve(loadAuthSession());
+
+  inflightCallback = exchangeAuthorizationCode(config, url, code)
+    .finally(() => { inflightCallback = null; });
+  return inflightCallback;
+}
+
+async function exchangeAuthorizationCode(
+  config: AuthConfig,
+  url: URL,
+  code: string,
+): Promise<AuthSession | null> {
   // OAuth state を照合して CSRF / 意図しない callback 混入を弾く
   const returnedState = url.searchParams.get('state');
   const savedState = sessionStorage.getItem(OAUTH_STATE_KEY);
@@ -117,6 +136,9 @@ export async function completeHostedUiCallback(config: AuthConfig, url: URL): Pr
 
   const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
   if (!verifier) throw new Error('Missing PKCE verifier.');
+
+  // 交換前に URL から code を除去（リロード/再マウントでの再交換も防ぐ）。
+  window.history.replaceState({}, document.title, window.location.pathname);
 
   const response = await fetch(`${config.domain}/oauth2/token`, {
     method: 'POST',
@@ -152,7 +174,6 @@ export async function completeHostedUiCallback(config: AuthConfig, url: URL): Pr
   sessionStorage.removeItem(PKCE_VERIFIER_KEY);
   sessionStorage.removeItem(OAUTH_STATE_KEY);
 
-  window.history.replaceState({}, document.title, window.location.pathname);
   return session;
 }
 

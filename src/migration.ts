@@ -1,7 +1,7 @@
 // AppState migration — sanitize nested shapes from old/corrupt data.
 
 import { createId, getTodayISO } from './infrastructure';
-import type { AppState, Goal, HabitGroup, HabitItem, HistoryEntry, NotifSettings, StreakCell, WishCategory } from './types';
+import type { AppState, Goal, HabitGroup, HabitItem, HistoryEntry, NotifSettings, StreakCell, WishCategory } from './domainTypes';
 import { DEMO_GOALS, DEMO_GROUPS, DEMO_STREAK, DEMO_WISHES, DEMO_HISTORY } from './data';
 
 const HH_MM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;

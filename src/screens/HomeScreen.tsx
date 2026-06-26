@@ -1,10 +1,12 @@
 // HomeScreen — "Today". The nightly ritual page.
 
 import React from 'react';
-import type { GoalLogPayload, HabitItemLogPayload, ReflectionPayload, ScreenProps } from '../types';
+import type { GoalLogPayload, HabitItemLogPayload, ReflectionPayload } from '../apiTypes';
+import type { ScreenProps } from '../screenTypes';
 import { getTodayISO } from '../infrastructure';
-import { ApiConflictError } from '../apiClient';
-import { applyGoalLogResult, applyItemLogResult, applySaveReflection } from '../application';
+import {
+  applyGoalLogResult, applyItemLogResult, applySaveReflection, recoverRepositoryRequestFailure,
+} from '../application';
 import { Checkbox, CountControl, SectionHeader, TopBar, Tag, ProgressBar, EmptyState } from '../components/Primitives';
 import { HabitGroupCard, StreakBar } from '../components/HabitGroup';
 import { I } from '../components/Icons';
@@ -28,12 +30,8 @@ export default function HomeScreen({ goto, onLogout, state, setState, repo }: Sc
     try {
       await request();
     } catch (error) {
-      if (error instanceof ApiConflictError) {
-        await repo.reloadToday().catch(() => undefined);
-        setLogError(CONFLICT_MESSAGE);
-      } else {
-        setLogError(FAILURE_MESSAGE);
-      }
+      const failure = await recoverRepositoryRequestFailure(error, repo);
+      setLogError(failure === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
     } finally {
       setPendingLogs(p => { const next = new Set(p); next.delete(pendingKey); return next; });
     }
@@ -120,12 +118,10 @@ export default function HomeScreen({ goto, onLogout, state, setState, repo }: Sc
       setSaved(true);
       setTimeout(() => setSaved(false), 2400);
     } catch (error) {
-      if (error instanceof ApiConflictError) {
-        await repo.reloadToday().catch(() => undefined);
-        setSaveError('他の端末で更新されていたため、最新の内容を取り込みました。確認のうえ、もう一度保存してください。');
-      } else {
-        setSaveError('保存に失敗しました。通信環境を確認してもう一度お試しください。');
-      }
+      const failure = await recoverRepositoryRequestFailure(error, repo);
+      setSaveError(failure === 'conflict'
+        ? '他の端末で更新されていたため、最新の内容を取り込みました。確認のうえ、もう一度保存してください。'
+        : '保存に失敗しました。通信環境を確認してもう一度お試しください。');
     } finally {
       setSaving(false);
     }

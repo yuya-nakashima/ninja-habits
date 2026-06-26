@@ -1,7 +1,7 @@
 // HabitGroupCard — used on Today screen (checkable items + WOOP).
 // StreakBar — 14-day record grid.
 
-import type { HabitGroup, StreakCell } from '../types';
+import type { HabitGroup, StreakCell } from '../domainTypes';
 import { Checkbox, CountControl, Eyebrow } from './Primitives';
 
 interface HabitGroupCardProps {

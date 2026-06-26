@@ -1,12 +1,14 @@
 import type { AuthSession } from './auth';
+import type { AppState, Goal, HabitGroup, HistoryEntry, StreakCell, WishCategory } from './domainTypes';
 import type {
-  AppState, DailyLogResult, Goal, GoalCreatePayload, GoalLogPayload, GoalMaster, GoalUpdatePayload,
-  HabitGroup, HabitGroupCreatePayload, HabitGroupMaster, HabitGroupUpdatePayload,
+  DailyLogResult, GoalCreatePayload, GoalLogPayload, GoalMaster, GoalUpdatePayload,
+  HabitGroupCreatePayload, HabitGroupMaster, HabitGroupUpdatePayload,
   HabitItemCreatePayload, HabitItemLogPayload, HabitItemMaster, HabitItemUpdatePayload,
-  HistoryEntry, NotificationPayload, NotificationResult, ReflectionPayload, StreakCell, WishCategory,
+  NotificationPayload, NotificationResult, ReflectionPayload,
   WishCategoryCreatePayload, WishCategoryMaster, WishCategoryUpdatePayload,
   WishItemCreatePayload, WishItemMaster, WishItemUpdatePayload,
-} from './types';
+} from './apiTypes';
+import { API_CONFLICT_ERROR_NAME } from './apiTypes';
 
 export interface ApiConfig {
   baseUrl: string;
@@ -133,7 +135,7 @@ export async function fetchReflections(
 export class ApiConflictError extends Error {
   constructor() {
     super('conflict');
-    this.name = 'ApiConflictError';
+    this.name = API_CONFLICT_ERROR_NAME;
   }
 }
 

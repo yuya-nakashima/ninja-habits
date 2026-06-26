@@ -1,6 +1,6 @@
 // Seed data for the interactive demo.
 
-import type { Goal, HabitGroup, HistoryEntry, StreakCell, WishCategory } from './types';
+import type { Goal, HabitGroup, HistoryEntry, StreakCell, WishCategory } from './domainTypes';
 
 export const DEMO_GROUPS: HabitGroup[] = [
   {
