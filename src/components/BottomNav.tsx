@@ -1,6 +1,6 @@
 // 5-tab bottom navigation.
 
-import type { ScreenId } from '../types';
+import type { ScreenId } from '../screenTypes';
 import { I } from './Icons';
 
 interface BottomNavProps {

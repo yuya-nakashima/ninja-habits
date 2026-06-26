@@ -1,6 +1,6 @@
 // Pure domain logic — no side effects, no React, no storage.
 
-import type { AppState, HistoryEntry, JSTNow, StreakCell } from './types';
+import type { AppState, HistoryEntry, JSTNow, StreakCell } from './domainTypes';
 
 export const DOW_LABELS: string[] = ['月', '火', '水', '木', '金', '土', '日'];
 

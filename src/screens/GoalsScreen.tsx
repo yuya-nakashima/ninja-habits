@@ -2,9 +2,10 @@
 // 本文・ミニマム目標は input の blur 時に PATCH で保存する。
 
 import React from 'react';
-import type { ScreenProps } from '../types';
-import { ApiConflictError } from '../apiClient';
-import { applyGoalCreated, applyGoalDeleted, applyGoalMasterUpdated } from '../application';
+import type { ScreenProps } from '../screenTypes';
+import {
+  applyGoalCreated, applyGoalDeleted, applyGoalMasterUpdated, classifyRepositoryRequestFailure,
+} from '../application';
 import { TopBar, EmptyState } from '../components/Primitives';
 import { I } from '../components/Icons';
 
@@ -45,7 +46,7 @@ export default function GoalsScreen({ goto, state, setState, repo }: ScreenProps
     } catch (err) {
       // 楽観更新を破棄してサーバー状態へ戻す（409 以外の失敗でも optimistic state を残さない）
       await repo.reloadToday().catch(() => undefined);
-      safeSetError(err instanceof ApiConflictError ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
+      safeSetError(classifyRepositoryRequestFailure(err) === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
     } finally {
       pendingRef.current.delete(pendingKey);
       if (mountedRef.current) setPending(new Set(pendingRef.current));

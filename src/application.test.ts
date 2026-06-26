@@ -2,7 +2,7 @@
 // All functions accept todayISO as a parameter so no fake timers are needed.
 // Run: npm test  (vitest)
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   withTodayBase,
   applyGoalCreated,
@@ -24,7 +24,9 @@ import {
   applyWishItemCreated,
   applyWishItemDeleted,
   applyWishItemUpdated,
+  recoverRepositoryRequestFailure,
 } from './application';
+import { API_CONFLICT_ERROR_NAME } from './apiTypes';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -380,5 +382,34 @@ describe('applySaveReflection', () => {
     expect(result.streakDate).toBe(TOMORROW);
     // goals reset by rollover
     result.goals.forEach(g => expect(g.done).toBe(false));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Repository request failure handling
+// ---------------------------------------------------------------------------
+
+describe('recoverRepositoryRequestFailure', () => {
+  it('reloads today and returns conflict for repository conflicts', async () => {
+    const repo = { reloadToday: vi.fn().mockResolvedValue(undefined) };
+
+    await expect(recoverRepositoryRequestFailure({ name: API_CONFLICT_ERROR_NAME }, repo))
+      .resolves.toBe('conflict');
+    expect(repo.reloadToday).toHaveBeenCalledOnce();
+  });
+
+  it('returns failure without reloading for other errors', async () => {
+    const repo = { reloadToday: vi.fn().mockResolvedValue(undefined) };
+
+    await expect(recoverRepositoryRequestFailure(new Error('network'), repo))
+      .resolves.toBe('failure');
+    expect(repo.reloadToday).not.toHaveBeenCalled();
+  });
+
+  it('still returns conflict when reload fails', async () => {
+    const repo = { reloadToday: vi.fn().mockRejectedValue(new Error('reload failed')) };
+
+    await expect(recoverRepositoryRequestFailure({ name: API_CONFLICT_ERROR_NAME }, repo))
+      .resolves.toBe('conflict');
   });
 });

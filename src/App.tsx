@@ -1,7 +1,9 @@
 // App — holds shared state, persistence, and screen routing.
 
 import React from 'react';
-import type { AppRepository, AppState, ScreenId, ScreenProps } from './types';
+import type { AppState } from './domainTypes';
+import type { AppRepository } from './ports';
+import type { ScreenId, ScreenProps } from './screenTypes';
 import type { AuthSession } from './auth';
 import {
   completeHostedUiCallback,

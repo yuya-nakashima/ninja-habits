@@ -2,13 +2,14 @@
 // テキストは blur 時に PATCH、追加/削除は即 API、通知は変更ごとに項目単位で直列保存する。
 
 import React from 'react';
-import type { HabitGroup, NotifSettings, ScreenProps } from '../types';
+import type { HabitGroup, NotifSettings } from '../domainTypes';
+import type { ScreenProps } from '../screenTypes';
 import { getJSTNow } from '../infrastructure';
 import { calcNextNotif, DOW_LABELS } from '../domain';
-import { ApiConflictError } from '../apiClient';
 import {
   applyGroupCreated, applyGroupDeleted, applyGroupMasterUpdated,
   applyItemCreated, applyItemDeleted, applyItemMasterUpdated, applyNotifSaved,
+  classifyRepositoryRequestFailure,
 } from '../application';
 import { Toggle, TopBar, EmptyState } from '../components/Primitives';
 import { I } from '../components/Icons';
@@ -303,7 +304,7 @@ export default function HabitsScreen({ goto, state, setState, repo }: ScreenProp
     // 楽観更新を破棄してサーバー状態へ戻す（409 以外の失敗でも optimistic state を残さない）。
     // これにより blur 系の未保存値が次回 snapshot に紛れ込むのも防ぐ。
     await repo.reloadToday().catch(() => undefined);
-    safeSetError(err instanceof ApiConflictError ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
+    safeSetError(classifyRepositoryRequestFailure(err) === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
   }
 
   async function withRequest(pendingKey: string, request: () => Promise<void>) {

@@ -2,7 +2,8 @@
 // 全履歴は GET /v1/reflections（既定で直近30日）から取得する。
 
 import React from 'react';
-import type { HistoryEntry, ScreenProps } from '../types';
+import type { HistoryEntry } from '../domainTypes';
+import type { ScreenProps } from '../screenTypes';
 import { TopBar, EmptyState } from '../components/Primitives';
 import { StreakBar } from '../components/HabitGroup';
 import { I } from '../components/Icons';
