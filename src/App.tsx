@@ -16,7 +16,9 @@ import {
 import {
   createGoal, createHabitGroup, createHabitItem, createWishCategory, createWishItem,
   deleteGoal, deleteHabitGroup, deleteHabitItem, deleteWishCategory, deleteWishItem,
-  fetchReflections, fetchTodayState, getApiConfig, reorderGoals, saveGoalLog, saveHabitItemLog, saveNotification,
+  fetchReflections, fetchTodayState, getApiConfig,
+  reorderGoals, reorderHabitGroups, reorderHabitItems,
+  saveGoalLog, saveHabitItemLog, saveNotification,
   saveReflection, updateGoal, updateHabitGroup, updateHabitItem, updateWishCategory, updateWishItem,
 } from './apiClient';
 import { getTodayISO } from './infrastructure';
@@ -66,6 +68,8 @@ export default function App() {
       updateGoal: (goalId, payload) => updateGoal(apiConfig, authSession, goalId, payload),
       deleteGoal: goalId => deleteGoal(apiConfig, authSession, goalId),
       reorderGoals: payload => reorderGoals(apiConfig, authSession, payload),
+      reorderHabitGroups: payload => reorderHabitGroups(apiConfig, authSession, payload),
+      reorderHabitItems: (groupId, payload) => reorderHabitItems(apiConfig, authSession, groupId, payload),
       createHabitGroup: payload => createHabitGroup(apiConfig, authSession, payload),
       updateHabitGroup: (groupId, payload) => updateHabitGroup(apiConfig, authSession, groupId, payload),
       deleteHabitGroup: groupId => deleteHabitGroup(apiConfig, authSession, groupId),

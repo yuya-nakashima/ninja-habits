@@ -1,14 +1,32 @@
 // HabitsScreen — manage habit-stack groups, items, WOOP, and per-item notifications.
 // テキストは blur 時に PATCH、追加/削除は即 API、通知は変更ごとに項目単位で直列保存する。
+// グループ・アイテム両レベルで drag-and-drop 並び替えを実装（@dnd-kit）。
 
 import React from 'react';
+import {
+  DndContext,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { HabitGroup, NotifSettings } from '../domainTypes';
 import type { ScreenProps } from '../screenTypes';
 import { getJSTNow } from '../infrastructure';
 import { calcNextNotif, DOW_LABELS } from '../domain';
 import {
   applyGroupCreated, applyGroupDeleted, applyGroupMasterUpdated,
-  applyItemCreated, applyItemDeleted, applyItemMasterUpdated, applyNotifSaved,
+  applyGroupsReordered, applyItemCreated, applyItemDeleted, applyItemMasterUpdated,
+  applyItemsReordered, applyNotifSaved,
   classifyRepositoryRequestFailure,
 } from '../application';
 import { Toggle, TopBar, EmptyState } from '../components/Primitives';
@@ -118,6 +136,9 @@ function NotifPanel({ notif, onChange }: NotifPanelProps) {
 
 interface HabitItemRowProps {
   item: HabitGroup['items'][number];
+  dragHandleProps?: Record<string, unknown>;
+  dragHandleRef?: (el: HTMLElement | null) => void;
+  style?: React.CSSProperties;
   onRename: (content: string) => void;
   onFocusContent: () => void;
   onBlurContent: () => void;
@@ -125,14 +146,16 @@ interface HabitItemRowProps {
   deleting: boolean;
   onNotifChange: (notif: NotifSettings) => void;
 }
-function HabitItemRow({ item, onRename, onFocusContent, onBlurContent, onDelete, deleting, onNotifChange }: HabitItemRowProps) {
+function HabitItemRow({ item, dragHandleProps, dragHandleRef, style, onRename, onFocusContent, onBlurContent, onDelete, deleting, onNotifChange }: HabitItemRowProps) {
   const [expanded, setExpanded] = React.useState(false);
   const notifOn = item.notif.on;
 
   return (
     <>
-      <div className={`habit-item-row${expanded ? ' is-expanded' : ''}`}>
-        <span className="kit-drag"><I.grip width={14} height={14} /></span>
+      <div className={`habit-item-row${expanded ? ' is-expanded' : ''}`} style={style}>
+        <span className="kit-drag" ref={dragHandleRef} {...dragHandleProps} style={{ touchAction: 'none', cursor: 'grab' }}>
+          <I.grip width={14} height={14} />
+        </span>
         <input
           className="kit-additem-inp"
           aria-label="習慣項目"
@@ -161,6 +184,23 @@ function HabitItemRow({ item, onRename, onFocusContent, onBlurContent, onDelete,
   );
 }
 
+function SortableHabitItemRow(props: Omit<HabitItemRowProps, 'dragHandleProps' | 'dragHandleRef' | 'style'>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <HabitItemRow
+      {...props}
+      dragHandleRef={setNodeRef as (el: HTMLElement | null) => void}
+      dragHandleProps={{ ...attributes, ...listeners } as Record<string, unknown>}
+      style={style}
+    />
+  );
+}
+
 // ---------------------------------------------------------------------------
 // GroupEditor — name, items with notification controls, WOOP.
 // ---------------------------------------------------------------------------
@@ -171,6 +211,7 @@ interface GroupEditorProps {
   group: HabitGroup;
   woopOpen: boolean;
   pending: ReadonlySet<string>;
+  itemsReordering: boolean;
   toggleWoop: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -183,11 +224,17 @@ interface GroupEditorProps {
   onPatchWoop: (patch: WoopPatch) => void;
   onFocusWoop: () => void;
   onBlurWoop: () => void;
+  onItemsDragEnd: (event: DragEndEvent) => void;
+  // group-level drag handle props (passed from SortableGroupEditor)
+  groupDragHandleProps?: Record<string, unknown>;
+  groupDragHandleRef?: (el: HTMLElement | null) => void;
+  groupStyle?: React.CSSProperties;
 }
 function GroupEditor({
-  group, woopOpen, pending, toggleWoop, onRename, onDelete, onAddItem,
+  group, woopOpen, pending, itemsReordering, toggleWoop, onRename, onDelete, onAddItem,
   onRenameItem, onFocusItem, onBlurItem, onDeleteItem, onNotifChange,
-  onPatchWoop, onFocusWoop, onBlurWoop,
+  onPatchWoop, onFocusWoop, onBlurWoop, onItemsDragEnd,
+  groupDragHandleProps, groupDragHandleRef, groupStyle,
 }: GroupEditorProps) {
   const [newItem, setNewItem] = React.useState('');
   const [name, setName] = React.useState(group.name);
@@ -209,10 +256,18 @@ function GroupEditor({
     setNewItem('');
   }
 
+  const itemsSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
   return (
-    <div className="nh-card" style={{ marginBottom: 12 }}>
+    <div className="nh-card" style={{ marginBottom: 12, ...groupStyle }}>
       <div className="nh-card__head" style={{ gap: 8 }}>
-        <span className="kit-drag"><I.grip width={16} height={16} /></span>
+        <span className="kit-drag" ref={groupDragHandleRef} {...groupDragHandleProps}
+          style={{ touchAction: 'none', cursor: 'grab' }}>
+          <I.grip width={16} height={16} />
+        </span>
         <input className="kit-group-name-inp"
           value={name} onChange={e => setName(e.target.value)}
           onBlur={commitName} />
@@ -223,15 +278,19 @@ function GroupEditor({
       </div>
 
       <div className="nh-card__body">
-        {group.items.map(item => (
-          <HabitItemRow key={item.id} item={item}
-            onRename={content => onRenameItem(item.id, content)}
-            onFocusContent={() => onFocusItem(item.id)}
-            onBlurContent={() => onBlurItem(item.id)}
-            onDelete={() => onDeleteItem(item.id)}
-            deleting={pending.has(item.id)}
-            onNotifChange={notif => onNotifChange(item.id, notif)} />
-        ))}
+        <DndContext sensors={itemsSensors} collisionDetection={closestCenter} onDragEnd={onItemsDragEnd}>
+          <SortableContext items={group.items.map(it => it.id)} strategy={verticalListSortingStrategy}>
+            {group.items.map(item => (
+              <SortableHabitItemRow key={item.id} item={item}
+                onRename={content => onRenameItem(item.id, content)}
+                onFocusContent={() => onFocusItem(item.id)}
+                onBlurContent={() => onBlurItem(item.id)}
+                onDelete={() => onDeleteItem(item.id)}
+                deleting={pending.has(item.id) || itemsReordering}
+                onNotifChange={notif => onNotifChange(item.id, notif)} />
+            ))}
+          </SortableContext>
+        </DndContext>
         <div className="kit-additem-row">
           <input className="kit-additem-inp" type="text"
             placeholder="習慣を追加（例：水を200ml飲む）"
@@ -274,6 +333,23 @@ function GroupEditor({
   );
 }
 
+function SortableGroupEditor(props: Omit<GroupEditorProps, 'groupDragHandleProps' | 'groupDragHandleRef' | 'groupStyle'>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.group.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <GroupEditor
+      {...props}
+      groupDragHandleRef={setNodeRef as (el: HTMLElement | null) => void}
+      groupDragHandleProps={{ ...attributes, ...listeners } as Record<string, unknown>}
+      groupStyle={style}
+    />
+  );
+}
+
 // ---------------------------------------------------------------------------
 // HabitsScreen
 // ---------------------------------------------------------------------------
@@ -286,6 +362,13 @@ export default function HabitsScreen({ goto, state, setState, repo }: ScreenProp
   const [openWoop, setOpenWoop] = React.useState<Record<string, boolean>>({});
   const [pending, setPending] = React.useState<ReadonlySet<string>>(new Set());
   const [error, setError] = React.useState<string | null>(null);
+  const [groupsReordering, setGroupsReordering] = React.useState(false);
+  const [itemsReordering, setItemsReordering] = React.useState<Record<string, boolean>>({});
+
+  const groupSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
 
   const itemSnapshot = React.useRef<{ itemId: string; content: string } | null>(null);
   const woopSnapshot = React.useRef<WoopSnapshot | null>(null);
@@ -348,6 +431,53 @@ export default function HabitsScreen({ goto, state, setState, repo }: ScreenProp
       await repo.deleteHabitGroup(id);
       setState(s => applyGroupDeleted(s, id));
     });
+  }
+
+  async function handleGroupsDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || groupsReordering) return;
+    const oldIndex = state.groups.findIndex(g => g.id === active.id);
+    const newIndex = state.groups.findIndex(g => g.id === over.id);
+    const reordered = arrayMove(state.groups, oldIndex, newIndex);
+    setState(s => ({ ...s, groups: reordered }));
+    setGroupsReordering(true);
+    safeSetError(null);
+    try {
+      const payload = { items: reordered.map(g => ({ id: g.id, version: g.version ?? 1 })) };
+      const result = await repo.reorderHabitGroups(payload);
+      setState(s => applyGroupsReordered(s, result));
+    } catch (err) {
+      await repo.reloadToday().catch(() => undefined);
+      safeSetError(classifyRepositoryRequestFailure(err) === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
+    } finally {
+      setGroupsReordering(false);
+    }
+  }
+
+  async function handleItemsDragEnd(groupId: string, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || itemsReordering[groupId]) return;
+    const group = state.groups.find(g => g.id === groupId);
+    if (!group) return;
+    const oldIndex = group.items.findIndex(it => it.id === active.id);
+    const newIndex = group.items.findIndex(it => it.id === over.id);
+    const reordered = arrayMove(group.items, oldIndex, newIndex);
+    setState(s => ({
+      ...s,
+      groups: s.groups.map(g => g.id !== groupId ? g : { ...g, items: reordered }),
+    }));
+    setItemsReordering(r => ({ ...r, [groupId]: true }));
+    safeSetError(null);
+    try {
+      const payload = { items: reordered.map(it => ({ id: it.id, version: it.version ?? 1 })) };
+      const result = await repo.reorderHabitItems(groupId, payload);
+      setState(s => applyItemsReordered(s, groupId, result));
+    } catch (err) {
+      await repo.reloadToday().catch(() => undefined);
+      safeSetError(classifyRepositoryRequestFailure(err) === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
+    } finally {
+      setItemsReordering(r => ({ ...r, [groupId]: false }));
+    }
   }
 
   // --- WOOP（focus 時のスナップショットと比較し、blur 時に差分だけ保存） ---
@@ -507,23 +637,31 @@ export default function HabitsScreen({ goto, state, setState, repo }: ScreenProp
         <EmptyState icon={<I.list width={22} height={22} />}
           title="習慣グループがありません"
           body="既存の行動をきっかけに、新しい習慣を積み上げます。" />
-      ) : state.groups.map(g => (
-        <GroupEditor key={g.id} group={g}
-          woopOpen={!!openWoop[g.id]}
-          pending={pending}
-          toggleWoop={() => setOpenWoop(o => ({ ...o, [g.id]: !o[g.id] }))}
-          onRename={name => renameGroup(g.id, name)}
-          onDelete={() => deleteGroup(g.id)}
-          onAddItem={c => addItem(g.id, c)}
-          onRenameItem={(itemId, content) => renameItem(g.id, itemId, content)}
-          onFocusItem={focusItem}
-          onBlurItem={itemId => commitItem(g.id, itemId)}
-          onDeleteItem={itemId => deleteItem(g.id, itemId)}
-          onNotifChange={(itemId, notif) => changeNotif(g.id, itemId, notif)}
-          onPatchWoop={patch => patchWoop(g.id, patch)}
-          onFocusWoop={() => focusWoop(g.id)}
-          onBlurWoop={() => commitWoop(g.id)} />
-      ))}
+      ) : (
+        <DndContext sensors={groupSensors} collisionDetection={closestCenter} onDragEnd={handleGroupsDragEnd}>
+          <SortableContext items={state.groups.map(g => g.id)} strategy={verticalListSortingStrategy}>
+            {state.groups.map(g => (
+              <SortableGroupEditor key={g.id} group={g}
+                woopOpen={!!openWoop[g.id]}
+                pending={pending}
+                itemsReordering={!!itemsReordering[g.id]}
+                toggleWoop={() => setOpenWoop(o => ({ ...o, [g.id]: !o[g.id] }))}
+                onRename={name => renameGroup(g.id, name)}
+                onDelete={() => deleteGroup(g.id)}
+                onAddItem={c => addItem(g.id, c)}
+                onRenameItem={(itemId, content) => renameItem(g.id, itemId, content)}
+                onFocusItem={focusItem}
+                onBlurItem={itemId => commitItem(g.id, itemId)}
+                onDeleteItem={itemId => deleteItem(g.id, itemId)}
+                onNotifChange={(itemId, notif) => changeNotif(g.id, itemId, notif)}
+                onPatchWoop={patch => patchWoop(g.id, patch)}
+                onFocusWoop={() => focusWoop(g.id)}
+                onBlurWoop={() => commitWoop(g.id)}
+                onItemsDragEnd={event => handleItemsDragEnd(g.id, event)} />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
     </>
   );
 }
