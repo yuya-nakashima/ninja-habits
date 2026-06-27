@@ -136,9 +136,8 @@ function NotifPanel({ notif, onChange }: NotifPanelProps) {
 
 interface HabitItemRowProps {
   item: HabitGroup['items'][number];
-  dragHandleProps?: Record<string, unknown>;
-  dragHandleRef?: (el: HTMLElement | null) => void;
-  style?: React.CSSProperties;
+  activatorProps?: Record<string, unknown>;
+  activatorRef?: (el: HTMLElement | null) => void;
   onRename: (content: string) => void;
   onFocusContent: () => void;
   onBlurContent: () => void;
@@ -146,14 +145,14 @@ interface HabitItemRowProps {
   deleting: boolean;
   onNotifChange: (notif: NotifSettings) => void;
 }
-function HabitItemRow({ item, dragHandleProps, dragHandleRef, style, onRename, onFocusContent, onBlurContent, onDelete, deleting, onNotifChange }: HabitItemRowProps) {
+function HabitItemRow({ item, activatorProps, activatorRef, onRename, onFocusContent, onBlurContent, onDelete, deleting, onNotifChange }: HabitItemRowProps) {
   const [expanded, setExpanded] = React.useState(false);
   const notifOn = item.notif.on;
 
   return (
     <>
-      <div className={`habit-item-row${expanded ? ' is-expanded' : ''}`} style={style}>
-        <span className="kit-drag" ref={dragHandleRef} {...dragHandleProps} style={{ touchAction: 'none', cursor: 'grab' }}>
+      <div className={`habit-item-row${expanded ? ' is-expanded' : ''}`}>
+        <span className="kit-drag" ref={activatorRef} {...activatorProps} style={{ touchAction: 'none', cursor: 'grab' }}>
           <I.grip width={14} height={14} />
         </span>
         <input
@@ -184,20 +183,23 @@ function HabitItemRow({ item, dragHandleProps, dragHandleRef, style, onRename, o
   );
 }
 
-function SortableHabitItemRow(props: Omit<HabitItemRowProps, 'dragHandleProps' | 'dragHandleRef' | 'style'>) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id });
+function SortableHabitItemRow(props: Omit<HabitItemRowProps, 'activatorProps' | 'activatorRef'>) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  // setNodeRef は行全体+通知パネルを包む div へ（衝突判定・高さ測定の対象）
+  // setActivatorNodeRef は grip span のみ（ドラッグ起点）
   return (
-    <HabitItemRow
-      {...props}
-      dragHandleRef={setNodeRef as (el: HTMLElement | null) => void}
-      dragHandleProps={{ ...attributes, ...listeners } as Record<string, unknown>}
-      style={style}
-    />
+    <div ref={setNodeRef} style={style}>
+      <HabitItemRow
+        {...props}
+        activatorRef={setActivatorNodeRef as (el: HTMLElement | null) => void}
+        activatorProps={{ ...attributes, ...listeners } as Record<string, unknown>}
+      />
+    </div>
   );
 }
 
@@ -212,6 +214,7 @@ interface GroupEditorProps {
   woopOpen: boolean;
   pending: ReadonlySet<string>;
   itemsReordering: boolean;
+  groupsReordering: boolean;
   toggleWoop: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -225,16 +228,15 @@ interface GroupEditorProps {
   onFocusWoop: () => void;
   onBlurWoop: () => void;
   onItemsDragEnd: (event: DragEndEvent) => void;
-  // group-level drag handle props (passed from SortableGroupEditor)
-  groupDragHandleProps?: Record<string, unknown>;
-  groupDragHandleRef?: (el: HTMLElement | null) => void;
-  groupStyle?: React.CSSProperties;
+  // grip activator props (passed from SortableGroupEditor)
+  groupActivatorProps?: Record<string, unknown>;
+  groupActivatorRef?: (el: HTMLElement | null) => void;
 }
 function GroupEditor({
-  group, woopOpen, pending, itemsReordering, toggleWoop, onRename, onDelete, onAddItem,
+  group, woopOpen, pending, itemsReordering, groupsReordering, toggleWoop, onRename, onDelete, onAddItem,
   onRenameItem, onFocusItem, onBlurItem, onDeleteItem, onNotifChange,
   onPatchWoop, onFocusWoop, onBlurWoop, onItemsDragEnd,
-  groupDragHandleProps, groupDragHandleRef, groupStyle,
+  groupActivatorProps, groupActivatorRef,
 }: GroupEditorProps) {
   const [newItem, setNewItem] = React.useState('');
   const [name, setName] = React.useState(group.name);
@@ -262,9 +264,9 @@ function GroupEditor({
   );
 
   return (
-    <div className="nh-card" style={{ marginBottom: 12, ...groupStyle }}>
+    <div className="nh-card" style={{ marginBottom: 12 }}>
       <div className="nh-card__head" style={{ gap: 8 }}>
-        <span className="kit-drag" ref={groupDragHandleRef} {...groupDragHandleProps}
+        <span className="kit-drag" ref={groupActivatorRef} {...groupActivatorProps}
           style={{ touchAction: 'none', cursor: 'grab' }}>
           <I.grip width={16} height={16} />
         </span>
@@ -272,7 +274,7 @@ function GroupEditor({
           value={name} onChange={e => setName(e.target.value)}
           onBlur={commitName} />
         <button className="nh-iconbtn nh-iconbtn--danger" onClick={onDelete}
-          disabled={pending.has(group.id)} title="グループ削除">
+          disabled={pending.has(group.id) || groupsReordering} title="グループ削除">
           <I.trash width={16} height={16} />
         </button>
       </div>
@@ -333,20 +335,23 @@ function GroupEditor({
   );
 }
 
-function SortableGroupEditor(props: Omit<GroupEditorProps, 'groupDragHandleProps' | 'groupDragHandleRef' | 'groupStyle'>) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.group.id });
+function SortableGroupEditor(props: Omit<GroupEditorProps, 'groupActivatorProps' | 'groupActivatorRef'>) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: props.group.id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  // setNodeRef はカード全体を包む div へ（衝突判定・高さ測定の対象）
+  // setActivatorNodeRef は grip span のみ（ドラッグ起点）
   return (
-    <GroupEditor
-      {...props}
-      groupDragHandleRef={setNodeRef as (el: HTMLElement | null) => void}
-      groupDragHandleProps={{ ...attributes, ...listeners } as Record<string, unknown>}
-      groupStyle={style}
-    />
+    <div ref={setNodeRef} style={style}>
+      <GroupEditor
+        {...props}
+        groupActivatorRef={setActivatorNodeRef as (el: HTMLElement | null) => void}
+        groupActivatorProps={{ ...attributes, ...listeners } as Record<string, unknown>}
+      />
+    </div>
   );
 }
 
@@ -645,6 +650,7 @@ export default function HabitsScreen({ goto, state, setState, repo }: ScreenProp
                 woopOpen={!!openWoop[g.id]}
                 pending={pending}
                 itemsReordering={!!itemsReordering[g.id]}
+                groupsReordering={groupsReordering}
                 toggleWoop={() => setOpenWoop(o => ({ ...o, [g.id]: !o[g.id] }))}
                 onRename={name => renameGroup(g.id, name)}
                 onDelete={() => deleteGroup(g.id)}
