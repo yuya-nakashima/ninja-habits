@@ -259,6 +259,10 @@ export async function deleteHabitGroup(config: ApiConfig, session: AuthSession, 
   await requestJson(config, session, 'DELETE', `/v1/habit-groups/${groupId}`);
 }
 
+export async function reorderHabitGroups(config: ApiConfig, session: AuthSession, payload: ReorderPayload): Promise<ReorderResult> {
+  return await requestJson(config, session, 'PATCH', '/v1/habit-groups/reorder', payload as unknown as Record<string, unknown>) as ReorderResult;
+}
+
 export async function createHabitItem(config: ApiConfig, session: AuthSession, groupId: string, payload: HabitItemCreatePayload): Promise<HabitItemMaster> {
   return await requestJson(config, session, 'POST', `/v1/habit-groups/${groupId}/items`, { content: payload.content }) as HabitItemMaster;
 }
@@ -273,6 +277,10 @@ export async function updateHabitItem(config: ApiConfig, session: AuthSession, i
 
 export async function deleteHabitItem(config: ApiConfig, session: AuthSession, itemId: string): Promise<void> {
   await requestJson(config, session, 'DELETE', `/v1/habit-items/${itemId}`);
+}
+
+export async function reorderHabitItems(config: ApiConfig, session: AuthSession, groupId: string, payload: ReorderPayload): Promise<ReorderResult> {
+  return await requestJson(config, session, 'PATCH', `/v1/habit-groups/${groupId}/items/reorder`, payload as unknown as Record<string, unknown>) as ReorderResult;
 }
 
 export async function saveNotification(config: ApiConfig, session: AuthSession, itemId: string, payload: NotificationPayload): Promise<NotificationResult> {

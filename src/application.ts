@@ -116,6 +116,34 @@ export function applyGroupDeleted(s: AppState, groupId: string): AppState {
   return { ...s, groups: s.groups.filter(g => g.id !== groupId) };
 }
 
+export function applyGroupsReordered(s: AppState, result: ReorderResult): AppState {
+  const versionMap = new Map(result.items.map(r => [r.id, r.version]));
+  const ordered = result.items
+    .map(r => s.groups.find(g => g.id === r.id))
+    .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    .map(g => ({ ...g, version: versionMap.get(g.id) ?? g.version }));
+  const inResult = new Set(result.items.map(r => r.id));
+  const rest = s.groups.filter(g => !inResult.has(g.id));
+  return { ...s, groups: [...ordered, ...rest] };
+}
+
+export function applyItemsReordered(s: AppState, groupId: string, result: ReorderResult): AppState {
+  const versionMap = new Map(result.items.map(r => [r.id, r.version]));
+  return {
+    ...s,
+    groups: s.groups.map(g => {
+      if (g.id !== groupId) return g;
+      const ordered = result.items
+        .map(r => g.items.find(it => it.id === r.id))
+        .filter((it): it is NonNullable<typeof it> => it !== undefined)
+        .map(it => ({ ...it, version: versionMap.get(it.id) ?? it.version }));
+      const inResult = new Set(result.items.map(r => r.id));
+      const rest = g.items.filter(it => !inResult.has(it.id));
+      return { ...g, items: [...ordered, ...rest] };
+    }),
+  };
+}
+
 export function applyItemCreated(s: AppState, master: HabitItemMaster): AppState {
   return {
     ...s,

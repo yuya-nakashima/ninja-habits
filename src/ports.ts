@@ -21,6 +21,8 @@ export interface AppRepository {
   updateGoal(goalId: string, payload: GoalUpdatePayload): Promise<GoalMaster>;
   deleteGoal(goalId: string): Promise<void>;
   reorderGoals(payload: ReorderPayload): Promise<ReorderResult>;
+  reorderHabitGroups(payload: ReorderPayload): Promise<ReorderResult>;
+  reorderHabitItems(groupId: string, payload: ReorderPayload): Promise<ReorderResult>;
   createHabitGroup(payload: HabitGroupCreatePayload): Promise<HabitGroupMaster>;
   updateHabitGroup(groupId: string, payload: HabitGroupUpdatePayload): Promise<HabitGroupMaster>;
   deleteHabitGroup(groupId: string): Promise<void>;
