@@ -17,7 +17,7 @@ import {
   createGoal, createHabitGroup, createHabitItem, createWishCategory, createWishItem,
   deleteGoal, deleteHabitGroup, deleteHabitItem, deleteWishCategory, deleteWishItem,
   fetchReflections, fetchTodayState, getApiConfig,
-  reorderGoals, reorderHabitGroups, reorderHabitItems,
+  reorderGoals, reorderHabitGroups, reorderHabitItems, reorderWishCategories, reorderWishItems,
   saveGoalLog, saveHabitItemLog, saveNotification,
   saveReflection, updateGoal, updateHabitGroup, updateHabitItem, updateWishCategory, updateWishItem,
 } from './apiClient';
@@ -77,6 +77,8 @@ export default function App() {
       updateHabitItem: (itemId, payload) => updateHabitItem(apiConfig, authSession, itemId, payload),
       deleteHabitItem: itemId => deleteHabitItem(apiConfig, authSession, itemId),
       saveNotification: (itemId, payload) => saveNotification(apiConfig, authSession, itemId, payload),
+      reorderWishCategories: payload => reorderWishCategories(apiConfig, authSession, payload),
+      reorderWishItems: (categoryId, payload) => reorderWishItems(apiConfig, authSession, categoryId, payload),
       createWishCategory: payload => createWishCategory(apiConfig, authSession, payload),
       updateWishCategory: (categoryId, payload) => updateWishCategory(apiConfig, authSession, categoryId, payload),
       deleteWishCategory: categoryId => deleteWishCategory(apiConfig, authSession, categoryId),
