@@ -129,3 +129,13 @@ export interface WishCategoryCreatePayload { name: string }
 export interface WishCategoryUpdatePayload { name: string; version: number }
 export interface WishItemCreatePayload { content: string }
 export interface WishItemUpdatePayload { content: string; version: number }
+
+/** PATCH .../reorder のリクエスト（表示順に並べた全件 + version）。 */
+export interface ReorderPayload {
+  items: { id: string; version: number }[];
+}
+
+/** PATCH .../reorder のレスポンス。各件の新 sort_order と更新後 version。 */
+export interface ReorderResult {
+  items: { id: string; sort_order: number; version: number }[];
+}
