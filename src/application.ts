@@ -212,6 +212,17 @@ export function applyWishCategoryDeleted(s: AppState, categoryId: string): AppSt
   return { ...s, wishes: s.wishes.filter(c => c.id !== categoryId) };
 }
 
+export function applyWishCategoriesReordered(s: AppState, result: ReorderResult): AppState {
+  const versionMap = new Map(result.items.map(r => [r.id, r.version]));
+  const ordered = result.items
+    .map(r => s.wishes.find(c => c.id === r.id))
+    .filter((c): c is NonNullable<typeof c> => c !== undefined)
+    .map(c => ({ ...c, version: versionMap.get(c.id) ?? c.version }));
+  const inResult = new Set(result.items.map(r => r.id));
+  const rest = s.wishes.filter(c => !inResult.has(c.id));
+  return { ...s, wishes: [...ordered, ...rest] };
+}
+
 export function applyWishItemCreated(s: AppState, master: WishItemMaster): AppState {
   return {
     ...s,
@@ -225,6 +236,23 @@ export function applyWishItemUpdated(s: AppState, categoryId: string, master: Wi
     ...s,
     wishes: s.wishes.map(c => c.id !== categoryId ? c
       : { ...c, items: c.items.map(it => it.id !== master.id ? it : { ...it, content: master.content, version: master.version }) }),
+  };
+}
+
+export function applyWishItemsReordered(s: AppState, categoryId: string, result: ReorderResult): AppState {
+  const versionMap = new Map(result.items.map(r => [r.id, r.version]));
+  return {
+    ...s,
+    wishes: s.wishes.map(c => {
+      if (c.id !== categoryId) return c;
+      const ordered = result.items
+        .map(r => c.items.find(it => it.id === r.id))
+        .filter((it): it is NonNullable<typeof it> => it !== undefined)
+        .map(it => ({ ...it, version: versionMap.get(it.id) ?? it.version }));
+      const inResult = new Set(result.items.map(r => r.id));
+      const rest = c.items.filter(it => !inResult.has(it.id));
+      return { ...c, items: [...ordered, ...rest] };
+    }),
   };
 }
 

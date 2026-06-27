@@ -30,6 +30,8 @@ export interface AppRepository {
   updateHabitItem(itemId: string, payload: HabitItemUpdatePayload): Promise<HabitItemMaster>;
   deleteHabitItem(itemId: string): Promise<void>;
   saveNotification(itemId: string, payload: NotificationPayload): Promise<NotificationResult>;
+  reorderWishCategories(payload: ReorderPayload): Promise<ReorderResult>;
+  reorderWishItems(categoryId: string, payload: ReorderPayload): Promise<ReorderResult>;
   createWishCategory(payload: WishCategoryCreatePayload): Promise<WishCategoryMaster>;
   updateWishCategory(categoryId: string, payload: WishCategoryUpdatePayload): Promise<WishCategoryMaster>;
   deleteWishCategory(categoryId: string): Promise<void>;

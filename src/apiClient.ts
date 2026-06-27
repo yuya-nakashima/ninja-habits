@@ -294,6 +294,14 @@ export async function saveNotification(config: ApiConfig, session: AuthSession, 
   return await requestJson(config, session, 'PUT', `/v1/habit-items/${itemId}/notification`, body) as NotificationResult;
 }
 
+export async function reorderWishCategories(config: ApiConfig, session: AuthSession, payload: ReorderPayload): Promise<ReorderResult> {
+  return await requestJson(config, session, 'PATCH', '/v1/wish-categories/reorder', payload as unknown as Record<string, unknown>) as ReorderResult;
+}
+
+export async function reorderWishItems(config: ApiConfig, session: AuthSession, categoryId: string, payload: ReorderPayload): Promise<ReorderResult> {
+  return await requestJson(config, session, 'PATCH', `/v1/wish-categories/${categoryId}/items/reorder`, payload as unknown as Record<string, unknown>) as ReorderResult;
+}
+
 export async function createWishCategory(config: ApiConfig, session: AuthSession, payload: WishCategoryCreatePayload): Promise<WishCategoryMaster> {
   return await requestJson(config, session, 'POST', '/v1/wish-categories', { name: payload.name }) as WishCategoryMaster;
 }
