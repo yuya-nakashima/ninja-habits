@@ -1,10 +1,28 @@
 // GoalsScreen — manage daily goals + minimum-goal fallbacks.
 // 本文・ミニマム目標は input の blur 時に PATCH で保存する。
+// 並び替えは @dnd-kit/sortable の drag handle で行う。
 
 import React from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { ScreenProps } from '../screenTypes';
 import {
-  applyGoalCreated, applyGoalDeleted, applyGoalMasterUpdated, classifyRepositoryRequestFailure,
+  applyGoalCreated, applyGoalDeleted, applyGoalMasterUpdated, applyGoalsReordered,
+  classifyRepositoryRequestFailure,
 } from '../application';
 import { TopBar, EmptyState } from '../components/Primitives';
 import { I } from '../components/Icons';
@@ -18,11 +36,61 @@ interface EditSnapshot {
   minimum_goal: string | null;
 }
 
+interface SortableGoalRowProps {
+  goal: { id: string; content: string; minimum_goal: string | null; version?: number };
+  disabled: boolean;
+  onFocus: (id: string) => void;
+  onBlur: (id: string) => void;
+  onContentChange: (id: string, val: string) => void;
+  onMinChange: (id: string, val: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function SortableGoalRow({ goal, disabled, onFocus, onBlur, onContentChange, onMinChange, onDelete }: SortableGoalRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: goal.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div className="kit-mgmt-row" ref={setNodeRef} style={style}>
+      <span className="kit-drag" {...attributes} {...listeners} style={{ touchAction: 'none', cursor: 'grab' }}>
+        <I.grip width={16} height={16} />
+      </span>
+      <div className="kit-mgmt-body">
+        <input className="kit-mgmt-min-inp" type="text"
+          aria-label="目標本文"
+          value={goal.content}
+          onFocus={() => onFocus(goal.id)}
+          onBlur={() => onBlur(goal.id)}
+          onChange={e => onContentChange(goal.id, e.target.value)} />
+        <input className="kit-mgmt-min-inp" type="text"
+          placeholder="ミニマム目標（任意）"
+          value={goal.minimum_goal || ''}
+          onFocus={() => onFocus(goal.id)}
+          onBlur={() => onBlur(goal.id)}
+          onChange={e => onMinChange(goal.id, e.target.value)} />
+      </div>
+      <button className="nh-iconbtn nh-iconbtn--danger" aria-label="目標を削除"
+        disabled={disabled} onClick={() => onDelete(goal.id)}>
+        <I.x width={16} height={16} />
+      </button>
+    </div>
+  );
+}
+
 export default function GoalsScreen({ goto, state, setState, repo }: ScreenProps) {
   const [content, setContent] = React.useState('');
   const [minimum, setMinimum] = React.useState('');
   const [pending, setPending] = React.useState<ReadonlySet<string>>(new Set());
   const [error, setError] = React.useState<string | null>(null);
+  const [reordering, setReordering] = React.useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
 
   // blur 時に差分保存するため、focus 時点の値を覚えておく
   const snapshot = React.useRef<EditSnapshot | null>(null);
@@ -68,6 +136,30 @@ export default function GoalsScreen({ goto, state, setState, repo }: ScreenProps
       await repo.deleteGoal(id);
       setState(s => applyGoalDeleted(s, id));
     });
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || reordering) return;
+
+    // 楽観更新: ドラッグ後の順序を即時反映
+    const oldIndex = state.goals.findIndex(g => g.id === active.id);
+    const newIndex = state.goals.findIndex(g => g.id === over.id);
+    const reordered = arrayMove(state.goals, oldIndex, newIndex);
+    setState(s => ({ ...s, goals: reordered }));
+
+    setReordering(true);
+    safeSetError(null);
+    try {
+      const payload = { items: reordered.map(g => ({ id: g.id, version: g.version ?? 1 })) };
+      const result = await repo.reorderGoals(payload);
+      setState(s => applyGoalsReordered(s, result));
+    } catch (err) {
+      await repo.reloadToday().catch(() => undefined);
+      safeSetError(classifyRepositoryRequestFailure(err) === 'conflict' ? CONFLICT_MESSAGE : FAILURE_MESSAGE);
+    } finally {
+      setReordering(false);
+    }
   }
 
   function beginEdit(id: string) {
@@ -142,29 +234,24 @@ export default function GoalsScreen({ goto, state, setState, repo }: ScreenProps
         <EmptyState icon={<I.target width={22} height={22} />}
           title="まだ目標がありません"
           body="上のフォームから今日の目標を追加してください。" />
-      ) : state.goals.map(g => (
-        <div className="kit-mgmt-row" key={g.id}>
-          <span className="kit-drag"><I.grip width={16} height={16} /></span>
-          <div className="kit-mgmt-body">
-            <input className="kit-mgmt-min-inp" type="text"
-              aria-label="目標本文"
-              value={g.content}
-              onFocus={() => beginEdit(g.id)}
-              onBlur={() => commitEdit(g.id)}
-              onChange={e => setGoalContent(g.id, e.target.value)} />
-            <input className="kit-mgmt-min-inp" type="text"
-              placeholder="ミニマム目標（任意）"
-              value={g.minimum_goal || ''}
-              onFocus={() => beginEdit(g.id)}
-              onBlur={() => commitEdit(g.id)}
-              onChange={e => setMin(g.id, e.target.value)} />
-          </div>
-          <button className="nh-iconbtn nh-iconbtn--danger" aria-label="目標を削除"
-            disabled={pending.has(g.id)} onClick={() => deleteGoal(g.id)}>
-            <I.x width={16} height={16} />
-          </button>
-        </div>
-      ))}
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={state.goals.map(g => g.id)} strategy={verticalListSortingStrategy}>
+            {state.goals.map(g => (
+              <SortableGoalRow
+                key={g.id}
+                goal={g}
+                disabled={pending.has(g.id) || reordering}
+                onFocus={beginEdit}
+                onBlur={commitEdit}
+                onContentChange={setGoalContent}
+                onMinChange={setMin}
+                onDelete={deleteGoal}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
     </>
   );
 }

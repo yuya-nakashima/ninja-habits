@@ -6,7 +6,7 @@ import type {
   DailyLogResult, GoalCreatePayload, GoalLogPayload, GoalMaster, GoalUpdatePayload,
   HabitGroupCreatePayload, HabitGroupMaster, HabitGroupUpdatePayload,
   HabitItemCreatePayload, HabitItemLogPayload, HabitItemMaster, HabitItemUpdatePayload,
-  NotificationPayload, NotificationResult, ReflectionPayload,
+  NotificationPayload, NotificationResult, ReflectionPayload, ReorderPayload, ReorderResult,
   WishCategoryCreatePayload, WishCategoryMaster, WishCategoryUpdatePayload,
   WishItemCreatePayload, WishItemMaster, WishItemUpdatePayload,
 } from './apiTypes';
@@ -20,6 +20,7 @@ export interface AppRepository {
   createGoal(payload: GoalCreatePayload): Promise<GoalMaster>;
   updateGoal(goalId: string, payload: GoalUpdatePayload): Promise<GoalMaster>;
   deleteGoal(goalId: string): Promise<void>;
+  reorderGoals(payload: ReorderPayload): Promise<ReorderResult>;
   createHabitGroup(payload: HabitGroupCreatePayload): Promise<HabitGroupMaster>;
   updateHabitGroup(groupId: string, payload: HabitGroupUpdatePayload): Promise<HabitGroupMaster>;
   deleteHabitGroup(groupId: string): Promise<void>;

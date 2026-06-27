@@ -4,7 +4,7 @@ import type {
   DailyLogResult, GoalCreatePayload, GoalLogPayload, GoalMaster, GoalUpdatePayload,
   HabitGroupCreatePayload, HabitGroupMaster, HabitGroupUpdatePayload,
   HabitItemCreatePayload, HabitItemLogPayload, HabitItemMaster, HabitItemUpdatePayload,
-  NotificationPayload, NotificationResult, ReflectionPayload,
+  NotificationPayload, NotificationResult, ReflectionPayload, ReorderPayload, ReorderResult,
   WishCategoryCreatePayload, WishCategoryMaster, WishCategoryUpdatePayload,
   WishItemCreatePayload, WishItemMaster, WishItemUpdatePayload,
 } from './apiTypes';
@@ -233,6 +233,10 @@ export async function updateGoal(config: ApiConfig, session: AuthSession, goalId
 
 export async function deleteGoal(config: ApiConfig, session: AuthSession, goalId: string): Promise<void> {
   await requestJson(config, session, 'DELETE', `/v1/goals/${goalId}`);
+}
+
+export async function reorderGoals(config: ApiConfig, session: AuthSession, payload: ReorderPayload): Promise<ReorderResult> {
+  return await requestJson(config, session, 'PATCH', '/v1/goals/reorder', payload as unknown as Record<string, unknown>) as ReorderResult;
 }
 
 export async function createHabitGroup(config: ApiConfig, session: AuthSession, payload: HabitGroupCreatePayload): Promise<HabitGroupMaster> {

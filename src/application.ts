@@ -8,7 +8,7 @@ import type { AppRepository } from './ports';
 import { API_CONFLICT_ERROR_NAME } from './apiTypes';
 import type {
   DailyLogResult, GoalMaster, HabitGroupMaster, HabitItemMaster,
-  NotificationResult, ReflectionPayload, WishCategoryMaster, WishItemMaster,
+  NotificationResult, ReflectionPayload, ReorderResult, WishCategoryMaster, WishItemMaster,
 } from './apiTypes';
 
 const DEFAULT_NOTIF = {
@@ -58,6 +58,19 @@ export function applyGoalMasterUpdated(s: AppState, master: GoalMaster): AppStat
 
 export function applyGoalDeleted(s: AppState, goalId: string): AppState {
   return { ...s, goals: s.goals.filter(g => g.id !== goalId) };
+}
+
+export function applyGoalsReordered(s: AppState, result: ReorderResult): AppState {
+  const versionMap = new Map(result.items.map(r => [r.id, r.version]));
+  // result.items の順序で goals を並べ直し、version を更新する
+  const ordered = result.items
+    .map(r => s.goals.find(g => g.id === r.id))
+    .filter((g): g is NonNullable<typeof g> => g !== undefined)
+    .map(g => ({ ...g, version: versionMap.get(g.id) ?? g.version }));
+  // result に含まれなかった goal（並び替え後に追加されたもの等）は末尾に追加
+  const inResult = new Set(result.items.map(r => r.id));
+  const rest = s.goals.filter(g => !inResult.has(g.id));
+  return { ...s, goals: [...ordered, ...rest] };
 }
 
 // ---------------------------------------------------------------------------
