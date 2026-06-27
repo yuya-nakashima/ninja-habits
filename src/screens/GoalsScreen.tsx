@@ -5,7 +5,7 @@
 import React from 'react';
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   closestCenter,
   useSensor,
@@ -88,7 +88,7 @@ export default function GoalsScreen({ goto, state, setState, repo }: ScreenProps
   const [reordering, setReordering] = React.useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
   );
 
